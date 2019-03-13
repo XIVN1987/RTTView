@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <author>XIVN1987</author>
- <class>SERCOM</class>
- <widget class="QWidget" name="SERCOM">
+ <class>RTTView</class>
+ <widget class="QWidget" name="RTTView">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>594</width>
-    <height>466</height>
+    <width>670</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -18,13 +18,16 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>XIVN1987 SERCOM</string>
+   <string>XIVN1987 SEGGER-RTT Client</string>
   </property>
   <property name="windowIcon">
    <iconset>
     <normaloff>Image/serial.ico</normaloff>Image/serial.ico</iconset>
   </property>
   <layout class="QVBoxLayout" name="vLayout0">
+   <property name="spacing">
+    <number>6</number>
+   </property>
    <item>
     <widget class="QTextEdit" name="txtMain">
      <property name="frameShadow">
@@ -36,10 +39,10 @@
     </widget>
    </item>
    <item>
-    <widget class="QwtPlot" name="qwtPlot"/>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="hLayout1">
+     <property name="spacing">
+      <number>6</number>
+     </property>
      <item>
       <widget class="QLabel" name="lblDLL">
        <property name="sizePolicy">
@@ -74,35 +77,33 @@
    <item>
     <layout class="QHBoxLayout" name="hLayout2">
      <item>
-      <widget class="QLabel" name="lblMap">
+      <widget class="QLabel" name="lblAddr">
        <property name="text">
-        <string>项目.map文件路径：</string>
+        <string>SRAM内存起始地址：</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="linMap"/>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnMap">
+      <widget class="QLineEdit" name="linAddr">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="text">
-        <string>...</string>
+        <string>0x20000000</string>
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="hLayout3">
      <item>
-      <widget class="QPushButton" name="btnClear">
-       <property name="text">
-        <string>清除</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="hSpacer31">
+      <spacer name="hSpacer21">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -147,12 +148,12 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer">
+      <spacer name="hSpacer22">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="sizeType">
-        <enum>QSizePolicy::Fixed</enum>
+        <enum>QSizePolicy::Expanding</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -164,29 +165,41 @@
      </item>
      <item>
       <widget class="QComboBox" name="cmbMode">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>80</width>
+         <height>0</height>
+        </size>
+       </property>
        <item>
         <property name="text">
-         <string>文本</string>
+         <string>文本显示</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>波形</string>
+         <string>波形显示</string>
         </property>
        </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnClear">
+       <property name="text">
+        <string>清除</string>
+       </property>
       </widget>
      </item>
     </layout>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QwtPlot</class>
-   <extends>QFrame</extends>
-   <header>qwt_plot.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
