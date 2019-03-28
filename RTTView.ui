@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>670</width>
-    <height>480</height>
+    <width>720</width>
+    <height>520</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -24,10 +24,7 @@
    <iconset>
     <normaloff>Image/serial.ico</normaloff>Image/serial.ico</iconset>
   </property>
-  <layout class="QVBoxLayout" name="vLayout0">
-   <property name="spacing">
-    <number>6</number>
-   </property>
+  <layout class="QVBoxLayout" name="vLayout">
    <item>
     <widget class="QTextEdit" name="txtMain">
      <property name="frameShadow">
@@ -39,7 +36,7 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="hLayout1">
+    <layout class="QHBoxLayout" name="hLayout">
      <property name="spacing">
       <number>6</number>
      </property>
@@ -72,70 +69,17 @@
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="hLayout2">
-     <item>
-      <widget class="QLabel" name="lblAddr">
-       <property name="text">
-        <string>SRAM内存起始地址：</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="linAddr">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>100</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>0x20000000</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="hSpacer21">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QLabel" name="lblStat">
-       <property name="text">
-        <string/>
-       </property>
-       <property name="pixmap">
-        <pixmap>Image/inclosing.png</pixmap>
-       </property>
-      </widget>
-     </item>
      <item>
       <widget class="QPushButton" name="btnOpen">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
        <property name="minimumSize">
         <size>
-         <width>104</width>
+         <width>100</width>
          <height>0</height>
         </size>
        </property>
@@ -148,51 +92,56 @@
       </widget>
      </item>
      <item>
-      <spacer name="hSpacer22">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+      <widget class="QCheckBox" name="chkWavShow">
+       <property name="text">
+        <string>波形显示</string>
        </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Expanding</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
+      </widget>
      </item>
-     <item>
-      <widget class="QComboBox" name="cmbMode">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
+    </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gLayout">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="btnClear">
        <property name="minimumSize">
         <size>
-         <width>80</width>
+         <width>100</width>
          <height>0</height>
         </size>
        </property>
-       <item>
-        <property name="text">
-         <string>文本显示</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>波形显示</string>
-        </property>
-       </item>
+       <property name="text">
+        <string>清除显示</string>
+       </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="btnClear">
+     <item row="0" column="0" rowspan="2">
+      <widget class="QTextEdit" name="txtSend"/>
+     </item>
+     <item row="0" column="2">
+      <widget class="QCheckBox" name="chkHEXShow">
        <property name="text">
-        <string>清除</string>
+        <string>HEX 显示</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QCheckBox" name="chkHEXSend">
+       <property name="text">
+        <string>HEX 发送</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="btnSend">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>42</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>发送</string>
        </property>
       </widget>
      </item>
