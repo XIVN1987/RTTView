@@ -49,7 +49,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>JLinkARM.dll路径：</string>
+        <string>JLink_x64.dll路径：</string>
        </property>
       </widget>
      </item>
