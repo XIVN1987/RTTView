@@ -70,10 +70,13 @@ class RTTView(QWidget):
         if not self.conf.has_section('J-Link'):
             self.conf.add_section('J-Link')
             self.conf.set('J-Link', 'dllpath', '')
-            self.conf.add_section('Memory')
-            self.conf.set('Memory', 'StartAddr', '0x20000000')
+            self.conf.set('J-Link', 'mcucore', 'Cortex-M0')
+            self.conf.add_section('Segger')
+            self.conf.set('Segger', 'rttaddr', '0x20000000')
 
         self.linDLL.setText(self.conf.get('J-Link', 'dllpath'))
+        self.linRTT.setText(self.conf.get('Segger', 'rttaddr'))
+        self.cmbCore.setCurrentIndex(self.cmbCore.findText(self.conf.get('J-Link', 'mcucore')))
 
     def initQwtPlot(self):
         self.PlotData  = [[0]*1000 for i in range(N_CURVES)]
@@ -94,14 +97,14 @@ class RTTView(QWidget):
                 self.jlink = ctypes.cdll.LoadLibrary(self.linDLL.text())
 
                 err_buf = (ctypes.c_char * 64)()
-                self.jlink.JLINKARM_ExecCommand('Device = Cortex-M0', err_buf, 64)
+                self.jlink.JLINKARM_ExecCommand(f'Device = {self.cmbCore.currentText()}'.encode('latin-1'), err_buf, 64)
 
                 self.jlink.JLINKARM_TIF_Select(1)
                 self.jlink.JLINKARM_SetSpeed(4000)
                 
                 buff = ctypes.create_string_buffer(1024)
-                Addr = int(self.conf.get('Memory', 'StartAddr'), 16)
-                for i in range(256):
+                Addr = int(self.linRTT.text(), 16)
+                for i in range(128):
                     self.jlink.JLINKARM_ReadMem(Addr + 1024*i, 1024, buff)
                     index = buff.raw.find(b'SEGGER RTT')
                     if index != -1:
@@ -123,10 +126,14 @@ class RTTView(QWidget):
             else:
                 self.linDLL.setEnabled(False)
                 self.btnDLL.setEnabled(False)
+                self.linRTT.setEnabled(False)
+                self.cmbCore.setEnabled(False)
                 self.btnOpen.setText('关闭连接')
         else:
             self.linDLL.setEnabled(True)
             self.btnDLL.setEnabled(True)
+            self.linRTT.setEnabled(True)
+            self.cmbCore.setEnabled(True)
             self.btnOpen.setText('打开连接')
     
     def aUpRead(self):
@@ -274,6 +281,8 @@ class RTTView(QWidget):
     
     def closeEvent(self, evt):
         self.conf.set('J-Link', 'dllpath', self.linDLL.text())
+        self.conf.set('J-Link', 'mcucore', self.cmbCore.currentText())
+        self.conf.set('Segger', 'rttaddr', self.linRTT.text())
         self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
 
