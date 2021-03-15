@@ -38,25 +38,13 @@
    <item>
     <layout class="QGridLayout" name="gLayout1">
      <item row="0" column="6">
-      <widget class="QPushButton" name="btnDLL">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>60</width>
-         <height>16777215</height>
-        </size>
-       </property>
+      <widget class="QCheckBox" name="chkWavShow">
        <property name="text">
-        <string>...</string>
+        <string>波形显示</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="7">
+     <item row="0" column="5">
       <widget class="QPushButton" name="btnOpen">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -78,10 +66,22 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="3">
-      <widget class="QLabel" name="lblCore">
+     <item row="0" column="4">
+      <widget class="QPushButton" name="btnDLL">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>60</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="text">
-        <string>CPU Core：</string>
+        <string>...</string>
        </property>
       </widget>
      </item>
@@ -98,6 +98,26 @@
        </property>
       </widget>
      </item>
+     <item row="1" column="5">
+      <widget class="QPushButton" name="btnClear">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>清除显示</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="6">
+      <widget class="QCheckBox" name="chkHEXShow">
+       <property name="text">
+        <string>HEX 显示</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="2">
       <spacer name="hSpacer11">
        <property name="orientation">
@@ -111,7 +131,27 @@
        </property>
       </spacer>
      </item>
-     <item row="1" column="4">
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblRTT">
+       <property name="text">
+        <string>_SEGGER_ 搜索地址：</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblDLL">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>JLink_x64.dll路径：</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
       <widget class="QComboBox" name="cmbCore">
        <property name="minimumSize">
         <size>
@@ -161,67 +201,7 @@
        </item>
       </widget>
      </item>
-     <item row="0" column="8">
-      <widget class="QCheckBox" name="chkWavShow">
-       <property name="text">
-        <string>波形显示</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="7">
-      <widget class="QPushButton" name="btnClear">
-       <property name="minimumSize">
-        <size>
-         <width>100</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>清除显示</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="8">
-      <widget class="QCheckBox" name="chkHEXShow">
-       <property name="text">
-        <string>HEX 显示</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="lblDLL">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>JLink_x64.dll路径：</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="lblRTT">
-       <property name="text">
-        <string>_SEGGER_ 搜索地址：</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="5">
-      <spacer name="hSpacer12">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item row="0" column="1" colspan="5">
+     <item row="0" column="1" colspan="3">
       <widget class="QLineEdit" name="linDLL"/>
      </item>
     </layout>
