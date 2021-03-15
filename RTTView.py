@@ -71,11 +71,11 @@ class RTTView(QWidget):
             self.conf.add_section('J-Link')
             self.conf.set('J-Link', 'dllpath', '')
             self.conf.set('J-Link', 'mcucore', 'Cortex-M0')
-            self.conf.add_section('Segger')
-            self.conf.set('Segger', 'rttaddr', '0x20000000')
+            self.conf.add_section('Memory')
+            self.conf.set('Memory', 'rttaddr', '0x20000000')
 
         self.linDLL.setText(self.conf.get('J-Link', 'dllpath'))
-        self.linRTT.setText(self.conf.get('Segger', 'rttaddr'))
+        self.linRTT.setText(self.conf.get('Memory', 'rttaddr'))
         self.cmbCore.setCurrentIndex(self.cmbCore.findText(self.conf.get('J-Link', 'mcucore')))
 
     def initQwtPlot(self):
@@ -282,7 +282,7 @@ class RTTView(QWidget):
     def closeEvent(self, evt):
         self.conf.set('J-Link', 'dllpath', self.linDLL.text())
         self.conf.set('J-Link', 'mcucore', self.cmbCore.currentText())
-        self.conf.set('Segger', 'rttaddr', self.linRTT.text())
+        self.conf.set('Memory', 'rttaddr', self.linRTT.text())
         self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
 
