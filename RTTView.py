@@ -76,7 +76,7 @@ class RTTView(QWidget):
             self.conf.add_section('Memory')
             self.conf.set('Memory', 'rttaddr', '0x20000000')
 
-        self.cmbDLL.setItemText(0, self.conf.get('J-Link', 'dllpath'))
+        self.cmbDLL.addItem(self.conf.get('J-Link', 'dllpath'))
         self.linRTT.setText(self.conf.get('Memory', 'rttaddr'))
 
     def initQwtPlot(self):
