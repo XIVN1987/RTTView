@@ -37,14 +37,21 @@
    </item>
    <item>
     <layout class="QGridLayout" name="gLayout1">
-     <item row="0" column="6">
+     <item row="0" column="5">
       <widget class="QCheckBox" name="chkWavShow">
        <property name="text">
         <string>波形显示</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="5">
+     <item row="1" column="5">
+      <widget class="QCheckBox" name="chkHEXShow">
+       <property name="text">
+        <string>HEX 显示</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4">
       <widget class="QPushButton" name="btnOpen">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -66,7 +73,27 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="4">
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="linRTT">
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>0x20000000</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblRTT">
+       <property name="text">
+        <string>_SEGGER_ 搜索地址：</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
       <widget class="QPushButton" name="btnDLL">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -85,20 +112,20 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="linRTT">
-       <property name="maximumSize">
-        <size>
-         <width>100</width>
-         <height>16777215</height>
-        </size>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblDLL">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
        <property name="text">
-        <string>0x20000000</string>
+        <string>JLink_x64.dll路径：</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="5">
+     <item row="1" column="4">
       <widget class="QPushButton" name="btnClear">
        <property name="minimumSize">
         <size>
@@ -108,13 +135,6 @@
        </property>
        <property name="text">
         <string>清除显示</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="6">
-      <widget class="QCheckBox" name="chkHEXShow">
-       <property name="text">
-        <string>HEX 显示</string>
        </property>
       </widget>
      </item>
@@ -131,78 +151,14 @@
        </property>
       </spacer>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="lblRTT">
-       <property name="text">
-        <string>_SEGGER_ 搜索地址：</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="lblDLL">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>JLink_x64.dll路径：</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3">
-      <widget class="QComboBox" name="cmbCore">
-       <property name="minimumSize">
-        <size>
-         <width>100</width>
-         <height>0</height>
-        </size>
-       </property>
+     <item row="0" column="1" colspan="2">
+      <widget class="QComboBox" name="cmbDLL">
        <item>
         <property name="text">
-         <string>Cortex-M0</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Cortex-M0+</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Cortex-M3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Cortex-M4</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Cortex-M7</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Cortex-M23</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Cortex-M33</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Cortex-M55</string>
+         <string/>
         </property>
        </item>
       </widget>
-     </item>
-     <item row="0" column="1" colspan="3">
-      <widget class="QLineEdit" name="linDLL"/>
      </item>
     </layout>
    </item>

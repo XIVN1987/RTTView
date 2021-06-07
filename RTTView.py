@@ -1,7 +1,6 @@
-#! python3
+#!python3
 import os
 import sys
-import time
 import ctypes
 import configparser
 
@@ -9,6 +8,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QLegend
+
+import jlink
+import xlink
 
 
 N_CURVES = 4
@@ -59,6 +61,7 @@ class RTTView(QWidget):
         self.tmrRTT.start()
 
         self.tmrRTT_Cnt = 0
+        self.tmrDAP_Cnt = 0
     
     def initSetting(self):
         if not os.path.exists('setting.ini'):
@@ -70,13 +73,11 @@ class RTTView(QWidget):
         if not self.conf.has_section('J-Link'):
             self.conf.add_section('J-Link')
             self.conf.set('J-Link', 'dllpath', '')
-            self.conf.set('J-Link', 'mcucore', 'Cortex-M0')
             self.conf.add_section('Memory')
             self.conf.set('Memory', 'rttaddr', '0x20000000')
 
-        self.linDLL.setText(self.conf.get('J-Link', 'dllpath'))
+        self.cmbDLL.setItemText(0, self.conf.get('J-Link', 'dllpath'))
         self.linRTT.setText(self.conf.get('Memory', 'rttaddr'))
-        self.cmbCore.setCurrentIndex(self.cmbCore.findText(self.conf.get('J-Link', 'mcucore')))
 
     def initQwtPlot(self):
         self.PlotData  = [[0]*1000 for i in range(N_CURVES)]
@@ -94,76 +95,106 @@ class RTTView(QWidget):
     def on_btnOpen_clicked(self):
         if self.btnOpen.text() == '打开连接':
             try:
-                self.jlink = ctypes.cdll.LoadLibrary(self.linDLL.text())
-
-                err_buf = (ctypes.c_char * 64)()
-                self.jlink.JLINKARM_ExecCommand(f'Device = {self.cmbCore.currentText()}'.encode('latin-1'), err_buf, 64)
-
-                self.jlink.JLINKARM_TIF_Select(1)
-                self.jlink.JLINKARM_SetSpeed(4000)
+                if self.cmbDLL.currentIndex() == 0:
+                    self.xlk = xlink.XLink(jlink.JLink(self.cmbDLL.currentText(), 'Cortex-M0'))
                 
-                buff = ctypes.create_string_buffer(1024)
-                Addr = int(self.linRTT.text(), 16)
+                else:
+                    from pyocd.coresight import dap, ap, cortex_m
+                    daplink = self.daplinks[self.cmbDLL.currentIndex() - 1]
+                    daplink.open()
+
+                    _dp = dap.DebugPort(daplink, None)
+                    _dp.init()
+                    _dp.power_up_debug()
+
+                    _ap = ap.AHB_AP(_dp, 0)
+                    _ap.init()
+
+                    self.xlk = xlink.XLink(cortex_m.CortexM(None, _ap))
+                
+                addr = int(self.linRTT.text(), 16)
                 for i in range(128):
-                    self.jlink.JLINKARM_ReadMem(Addr + 1024*i, 1024, buff)
-                    index = buff.raw.find(b'SEGGER RTT')
+                    data = self.xlk.read_mem_U8(addr + 1024 * i, 1024 + 32) # 多读32字节，防止搜索内容在边界处
+                    index = bytes(data).find(b'SEGGER RTT')
                     if index != -1:
-                        self.RTTAddr = Addr + 1024*i + index
+                        self.RTTAddr = addr + 1024 * i + index
 
-                        buff = ctypes.create_string_buffer(ctypes.sizeof(SEGGER_RTT_CB))
-                        self.jlink.JLINKARM_ReadMem(self.RTTAddr, ctypes.sizeof(SEGGER_RTT_CB), buff)
+                        data = self.xlk.read_mem_U8(self.RTTAddr, ctypes.sizeof(SEGGER_RTT_CB))
 
-                        rtt_cb = SEGGER_RTT_CB.from_buffer(buff)
+                        rtt_cb = SEGGER_RTT_CB.from_buffer(bytearray(data))
                         self.aUpAddr = self.RTTAddr + 16 + 4 + 4
                         self.aDownAddr = self.aUpAddr + ctypes.sizeof(RingBuffer) * rtt_cb.MaxNumUpBuffers
 
                         self.txtMain.append(f'\n_SEGGER_RTT @ 0x{self.RTTAddr:08X} with {rtt_cb.MaxNumUpBuffers} aUp and {rtt_cb.MaxNumDownBuffers} aDown\n')
                         break
+                    
                 else:
                     raise Exception('Can not find _SEGGER_RTT')
+
             except Exception as e:
                 self.txtMain.append(f'\n{str(e)}\n')
+
             else:
-                self.linDLL.setEnabled(False)
+                self.cmbDLL.setEnabled(False)
                 self.btnDLL.setEnabled(False)
                 self.linRTT.setEnabled(False)
-                self.cmbCore.setEnabled(False)
                 self.btnOpen.setText('关闭连接')
+
         else:
-            self.linDLL.setEnabled(True)
+            self.xlk.close()
+            self.cmbDLL.setEnabled(True)
             self.btnDLL.setEnabled(True)
             self.linRTT.setEnabled(True)
-            self.cmbCore.setEnabled(True)
             self.btnOpen.setText('打开连接')
     
     def aUpRead(self):
-        buf = ctypes.create_string_buffer(ctypes.sizeof(RingBuffer))
-        self.jlink.JLINKARM_ReadMem(self.aUpAddr, ctypes.sizeof(RingBuffer), buf)
+        data = self.xlk.read_mem_U8(self.aUpAddr, ctypes.sizeof(RingBuffer))
 
-        aUp = RingBuffer.from_buffer(buf)
+        aUp = RingBuffer.from_buffer(bytearray(data))
         
         if aUp.RdOff == aUp.WrOff:
-            str = ctypes.create_string_buffer(0)
+            data = []
 
         elif aUp.RdOff < aUp.WrOff:
             cnt = aUp.WrOff - aUp.RdOff
-            str = ctypes.create_string_buffer(cnt)
-            self.jlink.JLINKARM_ReadMem(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value + aUp.RdOff, cnt, str)
+            data = self.xlk.read_mem_U8(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value + aUp.RdOff, cnt)
             
             aUp.RdOff += cnt
             
-            self.jlink.JLINKARM_WriteU32(self.aUpAddr + 4*4, aUp.RdOff)
+            self.xlk.write_U32(self.aUpAddr + 4*4, aUp.RdOff)
 
         else:
             cnt = aUp.SizeOfBuffer - aUp.RdOff
-            str = ctypes.create_string_buffer(cnt)
-            self.jlink.JLINKARM_ReadMem(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value + aUp.RdOff, cnt, str)
+            data = self.xlk.read_mem_U8(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value + aUp.RdOff, cnt)
             
             aUp.RdOff = 0  #这样下次再读就会进入执行上个条件
             
-            self.jlink.JLINKARM_WriteU32(self.aUpAddr + 4*4, aUp.RdOff)
+            self.xlk.write_U32(self.aUpAddr + 4*4, aUp.RdOff)
         
-        return str.raw
+        return bytes(data)
+
+    def aDownWrite(self, bytes):
+        data = self.xlk.read_mem_U8(self.aDownAddr, ctypes.sizeof(RingBuffer))
+
+        aDown = RingBuffer.from_buffer(bytearray(data))
+        
+        if aDown.WrOff >= aDown.RdOff:
+            if aDown.RdOff != 0: cnt = min(aDown.SizeOfBuffer - aDown.WrOff, len(bytes))
+            else:                cnt = min(aDown.SizeOfBuffer - 1 - aDown.WrOff, len(bytes))   # 写入操作不能使得 aDown.WrOff == aDown.RdOff，以区分满和空
+            self.xlk.write_mem(ctypes.cast(aDown.pBuffer, ctypes.c_void_p).value + aDown.WrOff, bytes[:cnt])
+            
+            aDown.WrOff += cnt
+            if aDown.WrOff == aDown.SizeOfBuffer: aDown.WrOff = 0
+
+            bytes = bytes[cnt:]
+
+        if bytes and aDown.RdOff != 0 and aDown.RdOff != 1:        # != 0 确保 aDown.WrOff 折返回 0，!= 1 确保有空间可写入
+            cnt = min(aDown.RdOff - 1 - aDown.WrOff, len(bytes))   # - 1 确保写入操作不导致WrOff与RdOff指向同一位置
+            self.xlk.write_mem(ctypes.cast(aDown.pBuffer, ctypes.c_void_p).value + aDown.WrOff, bytes[:cnt])
+
+            aDown.WrOff += cnt
+
+        self.xlk.write_U32(self.aDownAddr + 4*3, aDown.WrOff)
     
     def on_tmrRTT_timeout(self):
         if self.btnOpen.text() == '关闭连接':
@@ -223,32 +254,20 @@ class RTTView(QWidget):
             except Exception as e:
                 self.rcvbuff = b''
                 print(str(e))   # 波形显示模式下 txtMain 不可见，因此错误信息不能显示在其上
-    
-    def aDownWrite(self, bytes):
-        buf = ctypes.create_string_buffer(ctypes.sizeof(RingBuffer))
-        self.jlink.JLINKARM_ReadMem(self.aDownAddr, ctypes.sizeof(RingBuffer), buf)
 
-        aDown = RingBuffer.from_buffer(buf)
-        
-        if aDown.WrOff >= aDown.RdOff:
-            if aDown.RdOff != 0: cnt = min(aDown.SizeOfBuffer - aDown.WrOff, len(bytes))
-            else:                cnt = min(aDown.SizeOfBuffer - 1 - aDown.WrOff, len(bytes))    # 写入操作不能使得 aDown.WrOff == aDown.RdOff，以区分满和空
-            str = ctypes.create_string_buffer(bytes[:cnt])
-            self.jlink.JLINKARM_WriteMem(ctypes.cast(aDown.pBuffer, ctypes.c_void_p).value + aDown.WrOff, cnt, str)
-            
-            aDown.WrOff += cnt
-            if aDown.WrOff == aDown.SizeOfBuffer: aDown.WrOff = 0
-
-            bytes = bytes[cnt:]
-
-        if bytes and aDown.RdOff != 0 and aDown.RdOff != 1:         # != 0 确保 aDown.WrOff 折返回 0，!= 1 确保有空间可写入
-            cnt = min(aDown.RdOff - 1 - aDown.WrOff, len(bytes))    # - 1 确保写入操作不导致WrOff与RdOff指向同一位置
-            str = ctypes.create_string_buffer(bytes[:cnt])
-            self.jlink.JLINKARM_WriteMem(ctypes.cast(aDown.pBuffer, ctypes.c_void_p).value + aDown.WrOff, cnt, str)
-
-            aDown.WrOff += cnt
-
-        self.jlink.JLINKARM_WriteU32(self.aDownAddr + 4*3, aDown.WrOff)
+        else:
+            self.tmrDAP_Cnt += 1
+            if self.tmrDAP_Cnt % 100 == 0:
+                try:
+                    from pyocd.probe import aggregator
+                    self.daplinks = aggregator.DebugProbeAggregator.get_all_connected_probes()
+                    if len(self.daplinks) != self.cmbDLL.count() - 1:
+                        for i in range(1, self.cmbDLL.count()):
+                            self.cmbDLL.removeItem(i)
+                        for i, daplink in enumerate(self.daplinks):
+                            self.cmbDLL.addItem(daplink.product_name)
+                except Exception as e:
+                    pass
 
     @pyqtSlot()
     def on_btnSend_clicked(self):
@@ -266,9 +285,9 @@ class RTTView(QWidget):
 
     @pyqtSlot()
     def on_btnDLL_clicked(self):
-        dllpath, filter = QFileDialog.getOpenFileName(caption='JLink_x64.dll路径', filter='动态链接库文件 (*.dll)', directory=self.linDLL.text())
+        dllpath, filter = QFileDialog.getOpenFileName(caption='JLink_x64.dll路径', filter='动态链接库文件 (*.dll)', directory=self.cmbDLL.itemText(0))
         if dllpath != '':
-            self.linDLL.setText(dllpath)
+            self.cmbDLL.setItemText(0, dllpath)
 
     @pyqtSlot(int)
     def on_chkWavShow_stateChanged(self, state):
@@ -280,8 +299,7 @@ class RTTView(QWidget):
         self.txtMain.clear()
     
     def closeEvent(self, evt):
-        self.conf.set('J-Link', 'dllpath', self.linDLL.text())
-        self.conf.set('J-Link', 'mcucore', self.cmbCore.currentText())
+        self.conf.set('J-Link', 'dllpath', self.cmbDLL.itemText(0))
         self.conf.set('Memory', 'rttaddr', self.linRTT.text())
         self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
