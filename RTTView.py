@@ -167,7 +167,9 @@ class RTTView(QWidget):
             cnt = aUp.SizeOfBuffer - aUp.RdOff
             data = self.xlk.read_mem_U8(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value + aUp.RdOff, cnt)
             
-            aUp.RdOff = 0  #这样下次再读就会进入执行上个条件
+            data += self.xlk.read_mem_U8(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value ,aUp.WrOff )
+            
+            aUp.RdOff = aUp.WrOff
             
             self.xlk.write_U32(self.aUpAddr + 4*4, aUp.RdOff)
         
