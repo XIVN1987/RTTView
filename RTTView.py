@@ -152,24 +152,21 @@ class RTTView(QWidget):
 
         aUp = RingBuffer.from_buffer(bytearray(data))
         
-        if aUp.RdOff == aUp.WrOff:
-            data = []
-
-        elif aUp.RdOff < aUp.WrOff:
+        if aUp.RdOff <= aUp.WrOff:
             cnt = aUp.WrOff - aUp.RdOff
+
+        else:
+            cnt = aUp.SizeOfBuffer - aUp.RdOff
+
+        if 0 < cnt < 1024*1024:
             data = self.xlk.read_mem_U8(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value + aUp.RdOff, cnt)
             
-            aUp.RdOff += cnt
+            aUp.RdOff = (aUp.RdOff + cnt) % aUp.SizeOfBuffer
             
             self.xlk.write_U32(self.aUpAddr + 4*4, aUp.RdOff)
 
         else:
-            cnt = aUp.SizeOfBuffer - aUp.RdOff
-            data = self.xlk.read_mem_U8(ctypes.cast(aUp.pBuffer, ctypes.c_void_p).value + aUp.RdOff, cnt)
-            
-            aUp.RdOff = 0  #这样下次再读就会进入执行上个条件
-            
-            self.xlk.write_U32(self.aUpAddr + 4*4, aUp.RdOff)
+            data = []
         
         return bytes(data)
 
