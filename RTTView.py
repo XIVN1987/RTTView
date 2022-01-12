@@ -13,6 +13,9 @@ import jlink
 import xlink
 
 
+os.environ['PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'libusb-1.0.24/MinGW64/dll') + os.pathsep + os.environ['PATH']
+
+
 N_CURVES = 4
 
 class RingBuffer(ctypes.Structure):

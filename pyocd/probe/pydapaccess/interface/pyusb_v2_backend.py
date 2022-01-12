@@ -79,7 +79,7 @@ class PyUSBv2(Interface):
         config = dev.get_active_configuration()
 
         # Get CMSIS-DAPv2 interface
-        interface = usb.util.find_descriptor(config, custom_match=match_cmsis_dap_interface_name)
+        interface = usb.util.find_descriptor(config, custom_match=_match_cmsis_dap_v2_interface)
         if interface is None:
             raise DAPAccessIntf.DeviceError("Device %s has no CMSIS-DAPv2 interface" %
                                             self.serial_number)
@@ -250,6 +250,63 @@ class PyUSBv2(Interface):
         self.dev = None
         self.intf_number = None
         self.thread = None
+
+def _match_cmsis_dap_v2_interface(interface):
+    """! @brief Returns true for a CMSIS-DAP v2 interface.
+    
+    This match function performs several tests on the provided USB interface descriptor, to
+    determine whether it is a CMSIS-DAPv2 interface. These requirements must be met by the
+    interface:
+    
+    1. Have an interface name string containing "CMSIS-DAP".
+    2. bInterfaceClass must be 0xff.
+    3. bInterfaceSubClass must be 0.
+    4. Must have bulk out and bulk in endpoints, with an optional extra bulk in endpoint, in
+        that order.
+    """
+    try:
+        interface_name = usb.util.get_string(interface.device, interface.iInterface)
+        
+        # This tells us whether the interface is CMSIS-DAP, but not whether it's v1 or v2.
+        if (interface_name is None) or ("CMSIS-DAP" not in interface_name):
+            return False
+
+        # Now check the interface class to distinguish v1 from v2.
+        if (interface.bInterfaceClass != 0xFF) or (interface.bInterfaceSubClass != 0):
+            return False
+
+        # Must have either 2 or 3 endpoints.
+        if interface.bNumEndpoints not in (2, 3):
+            return False
+        
+        check_ep = lambda interface, ep_index, ep_dir, ep_type: \
+                    usb.util.endpoint_direction(interface[ep_index].bEndpointAddress) == ep_dir \
+                and usb.util.endpoint_type(interface[ep_index].bmAttributes) == ep_type
+
+        # Endpoint 0 must be bulk out.
+        if not check_ep(interface, 0, usb.util.ENDPOINT_OUT, usb.util.ENDPOINT_TYPE_BULK):
+            return False
+        
+        # Endpoint 1 must be bulk in.
+        if not check_ep(interface, 1, usb.util.ENDPOINT_IN, usb.util.ENDPOINT_TYPE_BULK):
+            return False
+        
+        # Endpoint 2 is optional. If present it must be bulk in.
+        if (interface.bNumEndpoints == 3) \
+            and not check_ep(interface, 2, usb.util.ENDPOINT_IN, usb.util.ENDPOINT_TYPE_BULK):
+            return False
+        
+        # All checks passed, this is a CMSIS-DAPv2 interface!
+        return True
+
+    except (UnicodeDecodeError, IndexError):
+        # UnicodeDecodeError exception can be raised if the device has a corrupted interface name.
+        # Certain versions of STLinkV2 are known to have this problem. If we can't read the
+        # interface name, there's no way to tell if it's a CMSIS-DAPv2 interface.
+        #
+        # IndexError can be raised if an endpoint is missing.
+        print()
+        return False
 
 class HasCmsisDapv2Interface(object):
     """! @brief CMSIS-DAPv2 match class to be used with usb.core.find"""
