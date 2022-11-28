@@ -18,7 +18,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>XIVN1987 SEGGER-RTT Viewer</string>
+   <string>SEGGER-RTT Viewer</string>
   </property>
   <property name="windowIcon">
    <iconset>
@@ -83,11 +83,11 @@
        <property name="toolTip">
         <string>RTT Control Block Address</string>
        </property>
-       <property name="toolTipDuration">
-        <number>1000</number>
-       </property>
        <property name="text">
         <string>0x20000000</string>
+       </property>
+       <property name="toolTipDuration" stdset="0">
+        <number>1000</number>
        </property>
       </widget>
      </item>
@@ -170,7 +170,7 @@
        <property name="toolTip">
         <string>接收内容编码</string>
        </property>
-       <property name="toolTipDuration">
+       <property name="toolTipDuration" stdset="0">
         <number>1000</number>
        </property>
        <item>
@@ -226,7 +226,7 @@
        <property name="toolTip">
         <string>发送内容编码</string>
        </property>
-       <property name="toolTipDuration">
+       <property name="toolTipDuration" stdset="0">
         <number>1000</number>
        </property>
        <item>
@@ -287,7 +287,7 @@
        <property name="toolTip">
         <string>发送回车编码</string>
        </property>
-       <property name="toolTipDuration">
+       <property name="toolTipDuration" stdset="0">
         <number>1000</number>
        </property>
        <item>
