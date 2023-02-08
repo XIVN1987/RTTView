@@ -16,8 +16,6 @@ import xlink
 os.environ['PATH'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'libusb-1.0.24/MinGW64/dll') + os.pathsep + os.environ['PATH']
 
 
-N_CURVES = 4
-
 class RingBuffer(ctypes.Structure):
     _fields_ = [
         ('sName',        ctypes.c_uint),    # ctypes.POINTER(ctypes.c_char)，64位Python中 ctypes.POINTER 是64位的，与目标芯片不符
@@ -83,6 +81,13 @@ class RTTView(QWidget):
             self.conf.set('encode', 'output', 'ASCII')
             self.conf.set('encode', 'oenter', r'\r\n')  # output enter (line feed)
 
+            self.conf.add_section('display')
+            self.conf.set('display', 'ncurve', '4')     # max curve number supported
+            self.conf.set('display', 'npoint', '1000')
+
+            self.conf.add_section('history')
+            self.conf.set('history', 'hist1', '11 22 33 AA BB CC')
+
         self.cmbDLL.addItem(self.conf.get('link', 'jlink'))
         self.daplink_detect()    # add DAPLink
 
@@ -95,9 +100,14 @@ class RTTView(QWidget):
         self.cmbOCode.setCurrentIndex(self.cmbOCode.findText(self.conf.get('encode', 'output')))
         self.cmbEnter.setCurrentIndex(self.cmbEnter.findText(self.conf.get('encode', 'oenter')))
 
+        self.N_CURVE = int(self.conf.get('display', 'ncurve'), 10)
+        self.N_POINT = int(self.conf.get('display', 'npoint'), 10)
+
+        self.txtSend.setPlainText(self.conf.get('history', 'hist1'))
+
     def initQwtPlot(self):
-        self.PlotData  = [[0]*1000 for i in range(N_CURVES)]
-        self.PlotPoint = [[QtCore.QPointF(j, 0) for j in range(1000)] for i in range(N_CURVES)]
+        self.PlotData  = [[0]*self.N_POINT for i in range(self.N_CURVE)]
+        self.PlotPoint = [[QtCore.QPointF(j, 0) for j in range(self.N_POINT)] for i in range(self.N_CURVE)]
 
         self.PlotChart = QChart()
 
@@ -105,7 +115,7 @@ class RTTView(QWidget):
         self.ChartView.setVisible(False)
         self.vLayout.insertWidget(0, self.ChartView)
         
-        self.PlotCurve = [QLineSeries() for i in range(N_CURVES)]
+        self.PlotCurve = [QLineSeries() for i in range(self.N_CURVE)]
 
     def daplink_detect(self):
         try:
@@ -290,7 +300,7 @@ class RTTView(QWidget):
                     d = [[float(x) for x in X.strip().split()] for X in d]      # [[12], [34]]   or [[12, 34], [56, 78]]
                     for arr in d:
                         for i, x in enumerate(arr):
-                            if i == N_CURVES: break
+                            if i == self.N_CURVE: break
 
                             self.PlotData[i].pop(0)
                             self.PlotData[i].append(x)
@@ -303,7 +313,7 @@ class RTTView(QWidget):
                         if len(d[-1]) != len(self.PlotChart.series()):
                             for series in self.PlotChart.series():
                                 self.PlotChart.removeSeries(series)
-                            for i in range(min(len(d[-1]), N_CURVES)):
+                            for i in range(min(len(d[-1]), self.N_CURVE)):
                                 self.PlotCurve[i].setName(f'Curve {i+1}')
                                 self.PlotChart.addSeries(self.PlotCurve[i])
                             self.PlotChart.createDefaultAxes()
@@ -317,7 +327,7 @@ class RTTView(QWidget):
                         miny = min([min(d) for d in self.PlotData[:len(self.PlotChart.series())]])
                         maxy = max([max(d) for d in self.PlotData[:len(self.PlotChart.series())]])
                         self.PlotChart.axisY().setRange(miny, maxy)
-                        self.PlotChart.axisX().setRange(0000, 1000)
+                        self.PlotChart.axisX().setRange(0000, self.N_POINT)
             
             except Exception as e:
                 self.rcvbuff = b''
@@ -369,6 +379,7 @@ class RTTView(QWidget):
         self.conf.set('encode', 'input',  self.cmbICode.currentText())
         self.conf.set('encode', 'output', self.cmbOCode.currentText())
         self.conf.set('encode', 'oenter', self.cmbEnter.currentText())
+        self.conf.set('history', 'hist1', self.txtSend.toPlainText())
         self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
 
