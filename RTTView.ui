@@ -123,6 +123,12 @@
      </item>
      <item row="0" column="4">
       <widget class="QCheckBox" name="chkWave">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>80</width>
@@ -168,6 +174,12 @@
      </item>
      <item row="1" column="4">
       <widget class="QCheckBox" name="chkSave">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>80</width>
@@ -204,6 +216,12 @@
      </item>
      <item row="2" column="2">
       <widget class="QComboBox" name="cmbEnter">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>80</width>
@@ -230,6 +248,12 @@
      </item>
      <item row="3" column="2">
       <widget class="QComboBox" name="cmbTime">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>80</width>
@@ -240,6 +264,12 @@
      </item>
      <item row="1" column="2">
       <widget class="QComboBox" name="cmbOCode">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>80</width>
@@ -286,6 +316,12 @@
      </item>
      <item row="0" column="2">
       <widget class="QComboBox" name="cmbICode">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>80</width>
@@ -321,6 +357,31 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="tblVar">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="rowCount">
+      <number>1</number>
+     </property>
+     <property name="columnCount">
+      <number>5</number>
+     </property>
+     <attribute name="horizontalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <row/>
+     <column/>
+     <column/>
+     <column/>
+     <column/>
+     <column/>
+    </widget>
    </item>
   </layout>
  </widget>

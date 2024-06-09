@@ -1,14 +1,16 @@
 #! python3
 import os
+import re
 import sys
 import ctypes
+import struct
 import datetime
 import collections
 import configparser
 
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QFileDialog, QTableWidgetItem
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QLegend
 
 import jlink
@@ -38,6 +40,10 @@ class SEGGER_RTT_CB(ctypes.Structure):      # Control Block
     ]
 
 
+Variable = collections.namedtuple('Variable', 'name addr size')                 # variable from *.map file
+Valuable = collections.namedtuple('Valuable', 'name addr size typ fmt show')    # variable to read and display
+
+
 '''
 from RTTView_UI import Ui_RTTView
 class RTTView(QWidget, Ui_RTTView):
@@ -51,6 +57,11 @@ class RTTView(QWidget):
         super(RTTView, self).__init__(parent)
         
         uic.loadUi('RTTView.ui', self)
+
+        self.tblVar.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+
+        self.Vars = {}  # {name: Variable}
+        self.Vals = {}  # {row:  Valuable}
 
         self.initSetting()
 
@@ -78,6 +89,7 @@ class RTTView(QWidget):
             self.conf.set('link', 'jlink', '')
             self.conf.set('link', 'select', '')
             self.conf.set('link', 'address', '["0x20000000"]')
+            self.conf.set('link', 'variable', '{}')
 
             self.conf.add_section('encode')
             self.conf.set('encode', 'input', 'ASCII')
@@ -107,6 +119,17 @@ class RTTView(QWidget):
         self.N_POINT = int(self.conf.get('display', 'npoint'), 10)
 
         self.txtSend.setPlainText(self.conf.get('history', 'hist1'))
+
+        self.Vals = eval(self.conf.get('link', 'variable'))
+
+        for row, val in self.Vals.items():
+            self.tblVar.setItem(row, 0, QTableWidgetItem(val.name))
+            self.tblVar.setItem(row, 1, QTableWidgetItem(f'{val.addr:08X}'))
+            self.tblVar.setItem(row, 2, QTableWidgetItem(val.typ))
+            self.tblVar.setItem(row, 3, QTableWidgetItem('显示' if val.show else '不显示'))
+            self.tblVar.setItem(row, 4, QTableWidgetItem('删除'))
+
+            self.tblVar.insertRow(self.tblVar.rowCount())
 
     def initQwtPlot(self):
         self.PlotData  = [[0]*self.N_POINT for i in range(self.N_CURVE)]
@@ -156,24 +179,30 @@ class RTTView(QWidget):
                 if self.chkSave.isChecked():
                     self.rcvfile = open(datetime.datetime.now().strftime("rcv_%y%m%d%H%M%S.txt"), 'w')
 
-                addr = int(self.cmbAddr.currentText(), 16)
-                for i in range(128):
-                    data = self.xlk.read_mem_U8(addr + 1024 * i, 1024 + 32) # 多读32字节，防止搜索内容在边界处
-                    index = bytes(data).find(b'SEGGER RTT')
-                    if index != -1:
-                        self.RTTAddr = addr + 1024 * i + index
+                if re.match(r'0[xX][0-9a-fA-F]{8}', self.cmbAddr.currentText()):
+                    addr = int(self.cmbAddr.currentText(), 16)
+                    for i in range(128):
+                        data = self.xlk.read_mem_U8(addr + 1024 * i, 1024 + 32) # 多读32字节，防止搜索内容在边界处
+                        index = bytes(data).find(b'SEGGER RTT')
+                        if index != -1:
+                            self.RTTAddr = addr + 1024 * i + index
 
-                        data = self.xlk.read_mem_U8(self.RTTAddr, ctypes.sizeof(SEGGER_RTT_CB))
+                            data = self.xlk.read_mem_U8(self.RTTAddr, ctypes.sizeof(SEGGER_RTT_CB))
 
-                        rtt_cb = SEGGER_RTT_CB.from_buffer(bytearray(data))
-                        self.aUpAddr = self.RTTAddr + 16 + 4 + 4
-                        self.aDownAddr = self.aUpAddr + ctypes.sizeof(RingBuffer) * rtt_cb.MaxNumUpBuffers
+                            rtt_cb = SEGGER_RTT_CB.from_buffer(bytearray(data))
+                            self.aUpAddr = self.RTTAddr + 16 + 4 + 4
+                            self.aDownAddr = self.aUpAddr + ctypes.sizeof(RingBuffer) * rtt_cb.MaxNumUpBuffers
 
-                        self.txtMain.append(f'\n_SEGGER_RTT @ 0x{self.RTTAddr:08X} with {rtt_cb.MaxNumUpBuffers} aUp and {rtt_cb.MaxNumDownBuffers} aDown\n')
-                        break
-                    
+                            self.txtMain.append(f'\n_SEGGER_RTT @ 0x{self.RTTAddr:08X} with {rtt_cb.MaxNumUpBuffers} aUp and {rtt_cb.MaxNumDownBuffers} aDown\n')
+                            break
+                        
+                    else:
+                        raise Exception('Can not find _SEGGER_RTT')
+
+                    self.rtt_cb = True
+
                 else:
-                    raise Exception('Can not find _SEGGER_RTT')
+                    self.rtt_cb = False
 
             except Exception as e:
                 self.txtMain.append(f'\n{str(e)}\n')
@@ -245,7 +274,17 @@ class RTTView(QWidget):
         self.tmrRTT_Cnt += 1
         if self.btnOpen.text() == '关闭连接':
             try:
-                rcvdbytes = self.aUpRead()
+                if self.rtt_cb:
+                    rcvdbytes = self.aUpRead()
+
+                else:
+                    vals = []
+                    for name, addr, size, typ, fmt, show in self.Vals.values():
+                        if show:
+                            buf = self.xlk.read_mem_U8(addr, size)
+                            vals.append(struct.unpack(fmt, bytes(buf))[0])
+
+                    rcvdbytes = b'\t'.join(f'{val}'.encode() for val in vals) + b',\n'
 
                 if self.rcvfile and not self.rcvfile.closed:
                     self.rcvfile.write(rcvdbytes.decode('latin-1'))
@@ -374,9 +413,103 @@ class RTTView(QWidget):
 
     @pyqtSlot()
     def on_btnDLL_clicked(self):
-        dllpath, filter = QFileDialog.getOpenFileName(caption='JLink_x64.dll路径', filter='动态链接库文件 (*.dll)', directory=self.cmbDLL.itemText(0))
+        dllpath, filter = QFileDialog.getOpenFileName(caption='JLink_x64.dll path', filter='动态链接库文件 (*.dll)', directory=self.cmbDLL.itemText(0))
         if dllpath != '':
             self.cmbDLL.setItemText(0, dllpath)
+
+    @pyqtSlot()
+    def on_btnAddr_clicked(self):
+        mappath, filter = QFileDialog.getOpenFileName(caption='MDK .map file path', filter='MDK .map file (*.map)', directory=self.cmbAddr.currentText())
+        if mappath != '':
+            self.cmbAddr.insertItem(0, mappath)
+            self.cmbAddr.setCurrentIndex(0)
+
+    @pyqtSlot(str)
+    def on_cmbAddr_currentIndexChanged(self, text):
+        if re.match(r'0[xX][0-9a-fA-F]{8}', text):
+            self.tblVar.setVisible(False)
+            self.gLayout2.removeWidget(self.tblVar)
+
+            self.txtSend.setVisible(True)
+            self.btnSend.setVisible(True)
+            self.cmbICode.setEnabled(True)
+            self.cmbOCode.setEnabled(True)
+            self.cmbEnter.setEnabled(True)
+
+        else:
+            self.txtSend.setVisible(False)
+            self.btnSend.setVisible(False)
+            self.cmbICode.setEnabled(False)
+            self.cmbOCode.setEnabled(False)
+            self.cmbEnter.setEnabled(False)
+
+            self.gLayout2.addWidget(self.tblVar, 0, 0, 4, 2)
+            self.tblVar.setVisible(True)
+
+        if os.path.exists(text) and os.path.isfile(text):
+            text = open(text, 'r', encoding='utf-8', errors='ignore').read()
+
+            for match in re.finditer(r'([_A-Za-z][_\w]+)\s+(0x[\dA-Fa-f]+)\s+Data\s+(\d+)', text):
+                if match.group(3) in ('1', '2', '4', '8'):
+                    self.Vars[match.group(1)] = Variable(match.group(1), int(match.group(2), 16), int(match.group(3)))
+
+            for var in self.Vars.values():
+                print(f'{var.name:30s} @ {var.addr:08X}, len={var.size}')
+
+    @pyqtSlot(int, int)
+    def on_tblVar_cellDoubleClicked(self, row, column):
+        if self.btnOpen.text() == '关闭连接': return
+
+        if column < 3:
+            if len(self.Vals) == self.N_CURVE: return
+            
+            dlg = VarDialog(self, row)
+            if dlg.exec() == QDialog.Accepted:
+                var = self.Vars[dlg.cmbVar.currentText()]
+                typ, fmt = dlg.cmbType.currentText(), dlg.cmbType.currentData()
+
+                self.Vals[row] = Valuable(var.name, var.addr, var.size, typ, fmt, True)
+
+                self.tblVar.setItem(row, 0, QTableWidgetItem(var.name))
+                self.tblVar.setItem(row, 1, QTableWidgetItem(f'{var.addr:08X}'))
+                self.tblVar.setItem(row, 2, QTableWidgetItem(typ))
+                self.tblVar.setItem(row, 3, QTableWidgetItem('显示'))
+                self.tblVar.setItem(row, 4, QTableWidgetItem('删除'))
+
+                if row == self.tblVar.rowCount() - 1:   # 最后一行
+                    self.tblVar.insertRow(self.tblVar.rowCount())
+                
+                self.PlotCurve[row].setName(var.name)
+                if self.PlotCurve[row] not in self.PlotChart.series():
+                    self.PlotChart.addSeries(self.PlotCurve[row])
+                    self.PlotChart.createDefaultAxes()
+        
+        elif column == 3:
+            if row != self.tblVar.rowCount() - 1:       # 非最后一行
+                self.Vals[row] = self.Vals[row]._replace(show = not self.Vals[row].show)
+
+                self.tblVar.item(row, 3).setText('显示' if self.Vals[row].show else '不显示')
+
+                self.PlotCurve[row].setPointsVisible(self.Vals[row].show)
+
+        elif column == 4:
+            if row != self.tblVar.rowCount() - 1:
+                if row == len(self.Vals) - 1:   # 删除最后一行数据
+                    del self.Vals[row]
+                else:
+                    for i in range(row, len(self.Vals)-1):
+                        self.Vals[i] = self.Vals[i+1]
+                    del self.Vals[i+1]
+
+                self.tblVar.removeRow(row)
+
+                for series in self.PlotChart.series():
+                    self.PlotChart.removeSeries(series)
+                for row in self.Vals.keys():
+                    self.PlotCurve[row].setName(self.Vals[row].name)
+                    if self.Vals[row].show:
+                        self.PlotChart.addSeries(self.PlotCurve[row])
+                self.PlotChart.createDefaultAxes()
 
     @pyqtSlot(int)
     def on_chkWave_stateChanged(self, state):
@@ -401,8 +534,38 @@ class RTTView(QWidget):
         addrs = [self.cmbAddr.currentText()] + [self.cmbAddr.itemText(i) for i in range(self.cmbAddr.count())]
         self.conf.set('link',   'address', repr(list(collections.OrderedDict.fromkeys(addrs))))   # 保留顺序去重
 
+        self.conf.set('link',   'variable', repr(self.Vals))
+
         self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
+
+class VarDialog(QDialog):
+    def __init__(self, parent, row):
+        super(VarDialog, self).__init__(parent)
+
+        uic.loadUi('VarDialog.ui', self)
+        
+        self.cmbVar.addItems(parent.Vars.keys())
+
+        if parent.tblVar.item(row, 0):
+            self.cmbVar.setCurrentText(parent.tblVar.item(row, 0).text())
+            self.cmbType.setCurrentText(parent.tblVar.item(row, 2).text())
+    
+    len2type = {
+        1: [('int8',  'b'), ('uint8',  'B')],
+        2: [('int16', 'h'), ('uint16', 'H')],
+        4: [('int32', 'i'), ('uint32', 'I'), ('float',  'f')],
+        8: [('int64', 'q'), ('uint64', 'Q'), ('double', 'd')]
+    }
+
+    @pyqtSlot(str)
+    def on_cmbVar_currentIndexChanged(self, name):
+        size = self.parent().Vars[name].size
+
+        self.cmbType.clear()
+        for typ, fmt in self.len2type[size]:
+            self.cmbType.addItem(typ, fmt)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
