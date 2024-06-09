@@ -2,6 +2,8 @@
 import os
 import sys
 import ctypes
+import datetime
+import collections
 import configparser
 
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
@@ -55,6 +57,7 @@ class RTTView(QWidget):
         self.initQwtPlot()
 
         self.rcvbuff = b''
+        self.rcvfile = None
         
         self.tmrRTT = QtCore.QTimer()
         self.tmrRTT.setInterval(10)
@@ -74,7 +77,7 @@ class RTTView(QWidget):
             self.conf.add_section('link')
             self.conf.set('link', 'jlink', '')
             self.conf.set('link', 'select', '')
-            self.conf.set('link', 'memory', '0x20000000')
+            self.conf.set('link', 'address', '["0x20000000"]')
 
             self.conf.add_section('encode')
             self.conf.set('encode', 'input', 'ASCII')
@@ -94,7 +97,7 @@ class RTTView(QWidget):
         index = self.cmbDLL.findText(self.conf.get('link', 'select'))
         self.cmbDLL.setCurrentIndex(index if index != -1 else 0)
 
-        self.linRTT.setText(self.conf.get('link', 'memory'))
+        self.cmbAddr.addItems(eval(self.conf.get('link', 'address')))
 
         self.cmbICode.setCurrentIndex(self.cmbICode.findText(self.conf.get('encode', 'input')))
         self.cmbOCode.setCurrentIndex(self.cmbOCode.findText(self.conf.get('encode', 'output')))
@@ -150,7 +153,10 @@ class RTTView(QWidget):
 
                     self.xlk = xlink.XLink(cortex_m.CortexM(None, _ap))
                 
-                addr = int(self.linRTT.text(), 16)
+                if self.chkSave.isChecked():
+                    self.rcvfile = open(datetime.datetime.now().strftime("rcv_%y%m%d%H%M%S.txt"), 'w')
+
+                addr = int(self.cmbAddr.currentText(), 16)
                 for i in range(128):
                     data = self.xlk.read_mem_U8(addr + 1024 * i, 1024 + 32) # 多读32字节，防止搜索内容在边界处
                     index = bytes(data).find(b'SEGGER RTT')
@@ -175,14 +181,18 @@ class RTTView(QWidget):
             else:
                 self.cmbDLL.setEnabled(False)
                 self.btnDLL.setEnabled(False)
-                self.linRTT.setEnabled(False)
+                self.cmbAddr.setEnabled(False)
                 self.btnOpen.setText('关闭连接')
 
         else:
+            if self.rcvfile and not self.rcvfile.closed:
+                self.rcvfile.close()
+
             self.xlk.close()
+
             self.cmbDLL.setEnabled(True)
             self.btnDLL.setEnabled(True)
-            self.linRTT.setEnabled(True)
+            self.cmbAddr.setEnabled(True)
             self.btnOpen.setText('打开连接')
     
     def aUpRead(self):
@@ -235,7 +245,12 @@ class RTTView(QWidget):
         self.tmrRTT_Cnt += 1
         if self.btnOpen.text() == '关闭连接':
             try:
-                self.rcvbuff += self.aUpRead()
+                rcvdbytes = self.aUpRead()
+
+                if self.rcvfile and not self.rcvfile.closed:
+                    self.rcvfile.write(rcvdbytes.decode('latin-1'))
+
+                self.rcvbuff += rcvdbytes
                 
                 if self.txtMain.isVisible():
                     text = ''
@@ -373,13 +388,19 @@ class RTTView(QWidget):
         self.txtMain.clear()
     
     def closeEvent(self, evt):
+        if self.rcvfile and not self.rcvfile.closed:
+            self.rcvfile.close()
+
         self.conf.set('link',   'jlink',  self.cmbDLL.itemText(0))
         self.conf.set('link',   'select', self.cmbDLL.currentText())
-        self.conf.set('link',   'memory', self.linRTT.text())
         self.conf.set('encode', 'input',  self.cmbICode.currentText())
         self.conf.set('encode', 'output', self.cmbOCode.currentText())
         self.conf.set('encode', 'oenter', self.cmbEnter.currentText())
         self.conf.set('history', 'hist1', self.txtSend.toPlainText())
+
+        addrs = [self.cmbAddr.currentText()] + [self.cmbAddr.itemText(i) for i in range(self.cmbAddr.count())]
+        self.conf.set('link',   'address', repr(list(collections.OrderedDict.fromkeys(addrs))))   # 保留顺序去重
+
         self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
 
