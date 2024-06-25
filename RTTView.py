@@ -76,6 +76,7 @@ class RTTView(QWidget):
         self.tmrRTT.start()
 
         self.tmrRTT_Cnt = 0
+        self.tmrRTT_Sav = 0
     
     def initSetting(self):
         if not os.path.exists('setting.ini'):
@@ -285,13 +286,61 @@ class RTTView(QWidget):
                             vals.append(struct.unpack(fmt, bytes(buf))[0])
 
                     rcvdbytes = b'\t'.join(f'{val}'.encode() for val in vals) + b',\n'
+            
+            except Exception as e:
+                rcvdbytes = b''
 
+            if rcvdbytes:
                 if self.rcvfile and not self.rcvfile.closed:
                     self.rcvfile.write(rcvdbytes.decode('latin-1'))
 
                 self.rcvbuff += rcvdbytes
                 
-                if self.txtMain.isVisible():
+                if self.chkWave.isChecked():
+                    if b',' in self.rcvbuff:
+                        try:
+                            d = self.rcvbuff[0:self.rcvbuff.rfind(b',')].split(b',')        # [b'12', b'34'] or [b'12 34', b'56 78']
+                            if self.cmbICode.currentText() != 'HEX':
+                                d = [[float(x)   for x in X.strip().split()] for X in d]    # [[12], [34]]   or [[12, 34], [56, 78]]
+                            else:
+                                d = [[int(x, 16) for x in X.strip().split()] for X in d]    # for example, d = [b'12', b'AA', b'5A5A']
+                            for arr in d:
+                                for i, x in enumerate(arr):
+                                    if i == self.N_CURVE: break
+
+                                    self.PlotData[i].pop(0)
+                                    self.PlotData[i].append(x)
+                                    self.PlotPoint[i].pop(0)
+                                    self.PlotPoint[i].append(QtCore.QPointF(999, x))
+                            
+                            self.rcvbuff = self.rcvbuff[self.rcvbuff.rfind(b',')+1:]
+
+                            if self.tmrRTT_Cnt - self.tmrRTT_Sav > 3:
+                                self.tmrRTT_Sav = self.tmrRTT_Cnt
+                                if len(d[-1]) != len(self.PlotChart.series()):
+                                    for series in self.PlotChart.series():
+                                        self.PlotChart.removeSeries(series)
+                                    for i in range(min(len(d[-1]), self.N_CURVE)):
+                                        self.PlotCurve[i].setName(f'Curve {i+1}')
+                                        self.PlotChart.addSeries(self.PlotCurve[i])
+                                    self.PlotChart.createDefaultAxes()
+
+                                for i in range(len(self.PlotChart.series())):
+                                    for j, point in enumerate(self.PlotPoint[i]):
+                                        point.setX(j)
+                                
+                                    self.PlotCurve[i].replace(self.PlotPoint[i])
+                            
+                                miny = min([min(d) for d in self.PlotData[:len(self.PlotChart.series())]])
+                                maxy = max([max(d) for d in self.PlotData[:len(self.PlotChart.series())]])
+                                self.PlotChart.axisY().setRange(miny, maxy)
+                                self.PlotChart.axisX().setRange(0000, self.N_POINT)
+            
+                        except Exception as e:
+                            self.rcvbuff = b''
+                            print(e)
+
+                else:
                     text = ''
                     if self.cmbICode.currentText() == 'ASCII':
                         text = ''.join([chr(x) for x in self.rcvbuff])
@@ -346,46 +395,6 @@ class RTTView(QWidget):
                     if len(self.txtMain.toPlainText()) > 25000: self.txtMain.clear()
                     self.txtMain.moveCursor(QtGui.QTextCursor.End)
                     self.txtMain.insertPlainText(text)
-
-                else:
-                    if self.rcvbuff.rfind(b',') == -1: return
-                    
-                    d = self.rcvbuff[0:self.rcvbuff.rfind(b',')].split(b',')    # [b'12', b'34'] or [b'12 34', b'56 78']
-                    d = [[float(x) for x in X.strip().split()] for X in d]      # [[12], [34]]   or [[12, 34], [56, 78]]
-                    for arr in d:
-                        for i, x in enumerate(arr):
-                            if i == self.N_CURVE: break
-
-                            self.PlotData[i].pop(0)
-                            self.PlotData[i].append(x)
-                            self.PlotPoint[i].pop(0)
-                            self.PlotPoint[i].append(QtCore.QPointF(999, x))
-                    
-                    self.rcvbuff = self.rcvbuff[self.rcvbuff.rfind(b',')+1:]
-
-                    if self.tmrRTT_Cnt % 4 == 0:
-                        if len(d[-1]) != len(self.PlotChart.series()):
-                            for series in self.PlotChart.series():
-                                self.PlotChart.removeSeries(series)
-                            for i in range(min(len(d[-1]), self.N_CURVE)):
-                                self.PlotCurve[i].setName(f'Curve {i+1}')
-                                self.PlotChart.addSeries(self.PlotCurve[i])
-                            self.PlotChart.createDefaultAxes()
-
-                        for i in range(len(self.PlotChart.series())):
-                            for j, point in enumerate(self.PlotPoint[i]):
-                                point.setX(j)
-                        
-                            self.PlotCurve[i].replace(self.PlotPoint[i])
-                    
-                        miny = min([min(d) for d in self.PlotData[:len(self.PlotChart.series())]])
-                        maxy = max([max(d) for d in self.PlotData[:len(self.PlotChart.series())]])
-                        self.PlotChart.axisY().setRange(miny, maxy)
-                        self.PlotChart.axisX().setRange(0000, self.N_POINT)
-            
-            except Exception as e:
-                self.rcvbuff = b''
-                print(str(e))   # 波形显示模式下 txtMain 不可见，因此错误信息不能显示在其上
 
         else:
             if self.tmrRTT_Cnt % 100 == 1:

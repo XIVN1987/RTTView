@@ -15,7 +15,7 @@ class JLink(object):
         self.jlk.JLINKARM_ExecCommand(f'Device = {mcucore}'.encode('latin-1'), err_buf, 64)
         
         self.jlk.JLINKARM_TIF_Select(1)
-        self.jlk.JLINKARM_SetSpeed(12000)
+        self.jlk.JLINKARM_SetSpeed(2000)
 
         self.get_registers()
 
