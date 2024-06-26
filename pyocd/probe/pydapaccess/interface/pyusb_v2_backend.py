@@ -322,12 +322,8 @@ class HasCmsisDapv2Interface(object):
             return False
         
         try:
-            def match_cmsis_dap_interface_name(desc):
-                interface_name = usb.util.get_string(desc.device, desc.iInterface)
-                return (interface_name is not None) and ("CMSIS-DAP" in interface_name)
-
             config = dev.get_active_configuration()
-            cmsis_dap_interface = usb.util.find_descriptor(config, custom_match=match_cmsis_dap_interface_name)
+            cmsis_dap_interface = usb.util.find_descriptor(config, custom_match=_match_cmsis_dap_v2_interface)
         except usb.core.USBError as error:
             # Produce a more helpful error message if we get a permissions error on Linux.
             if error.errno == errno.EACCES and platform.system() == "Linux":
