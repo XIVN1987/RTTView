@@ -1,9 +1,13 @@
 # RTTView
 SEGGER-RTT Client for J-LINK and DAPLink
 
-To run software, you need python 3.6, pyqt5 and pyqtchart.
+To run software, you need python 3.6+, pyqt5 and pyqtchart.
 
 To use DAPLink, you need additional pyusb for CMSIS-DAPv2 and another usb-backend for CMSIS-DAPv1 (hidapi or pywinusb for windows, hidapi for mac, pyusb for linux).
+
+``` shell
+pip install PyQt5 PyQtChart pyusb hidapi six
+```
 
 ![](./截屏.gif)
 
