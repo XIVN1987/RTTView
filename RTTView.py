@@ -40,7 +40,7 @@ class SEGGER_RTT_CB(ctypes.Structure):      # Control Block
     ]
 
 
-Variable = collections.namedtuple('Variable', 'name addr size')                 # variable from *.map file
+Variable = collections.namedtuple('Variable', 'name addr size')                 # variable from *.elf file
 Valuable = collections.namedtuple('Valuable', 'name addr size typ fmt show')    # variable to read and display
 
 
@@ -182,7 +182,7 @@ class RTTView(QWidget):
 
                 if re.match(r'0[xX][0-9a-fA-F]{8}', self.cmbAddr.currentText()):
                     addr = int(self.cmbAddr.currentText(), 16)
-                    for i in range(128):
+                    for i in range(256):
                         data = self.xlk.read_mem_U8(addr + 1024 * i, 1024 + 32) # 多读32字节，防止搜索内容在边界处
                         index = bytes(data).find(b'SEGGER RTT')
                         if index != -1:
@@ -428,9 +428,9 @@ class RTTView(QWidget):
 
     @pyqtSlot()
     def on_btnAddr_clicked(self):
-        mappath, filter = QFileDialog.getOpenFileName(caption='MDK .map file path', filter='MDK .map file (*.map)', directory=self.cmbAddr.currentText())
-        if mappath != '':
-            self.cmbAddr.insertItem(0, mappath)
+        elfpath, filter = QFileDialog.getOpenFileName(caption='elf file path', filter='elf file (*.elf *.axf *.out)', directory=self.cmbAddr.currentText())
+        if elfpath != '':
+            self.cmbAddr.insertItem(0, elfpath)
             self.cmbAddr.setCurrentIndex(0)
 
     @pyqtSlot(str)
@@ -456,14 +456,18 @@ class RTTView(QWidget):
             self.tblVar.setVisible(True)
 
         if os.path.exists(text) and os.path.isfile(text):
-            text = open(text, 'r', encoding='utf-8', errors='ignore').read()
+            try:
+                from elftools.elf.elffile import ELFFile
+                elffile = ELFFile(open(text, 'rb'))
+            except Exception as e:
+                print(f'open elf file fail: {e}')
+            else:
+                for sym in elffile.get_section_by_name('.symtab').iter_symbols():
+                    if sym.entry['st_info']['type'] == 'STT_OBJECT' and sym.entry['st_size'] in (1, 2, 4, 8):
+                        self.Vars[sym.name] = Variable(sym.name, sym.entry['st_value'], sym.entry['st_size'])
 
-            for match in re.finditer(r'([_A-Za-z][_\w]+)\s+(0x[\dA-Fa-f]+)\s+Data\s+(\d+)', text):
-                if match.group(3) in ('1', '2', '4', '8'):
-                    self.Vars[match.group(1)] = Variable(match.group(1), int(match.group(2), 16), int(match.group(3)))
-
-            for var in self.Vars.values():
-                print(f'{var.name:30s} @ {var.addr:08X}, len={var.size}')
+                for var in self.Vars.values():
+                    print(f'{var.name:30s} @ {var.addr:08X}, len={var.size}')
 
     @pyqtSlot(int, int)
     def on_tblVar_cellDoubleClicked(self, row, column):
