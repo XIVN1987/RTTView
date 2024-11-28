@@ -9,7 +9,7 @@ To use DAPLink, you need additional pyusb for CMSIS-DAPv2 and another usb-backen
 pip install PyQt5 PyQtChart pyusb hidapi six pyelftools
 ```
 
-![](./截屏.gif)
+![](./Image/截屏.gif)
 
 data format for wave show:
 + 1 wave: 11, 22, 33,
@@ -21,6 +21,6 @@ data format for wave show:
 ## J-Scope HSS mode
 When select elf file path in address combobox, RTTView read selected variable directly from memory at specified address, rather from RTT buffer.
 
-![](./截屏.jpg)
+![](./Image/截屏.jpg)
 
 Double-click the table cell to bring up the variable adding dialog.

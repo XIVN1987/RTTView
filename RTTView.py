@@ -459,15 +459,17 @@ class RTTView(QWidget):
             try:
                 from elftools.elf.elffile import ELFFile
                 elffile = ELFFile(open(text, 'rb'))
-            except Exception as e:
-                print(f'open elf file fail: {e}')
-            else:
+
+                self.Vars = {}
                 for sym in elffile.get_section_by_name('.symtab').iter_symbols():
                     if sym.entry['st_info']['type'] == 'STT_OBJECT' and sym.entry['st_size'] in (1, 2, 4, 8):
                         self.Vars[sym.name] = Variable(sym.name, sym.entry['st_value'], sym.entry['st_size'])
 
                 for var in self.Vars.values():
                     print(f'{var.name:30s} @ {var.addr:08X}, len={var.size}')
+
+            except Exception as e:
+                print(f'parse elf file fail: {e}')
 
     @pyqtSlot(int, int)
     def on_tblVar_cellDoubleClicked(self, row, column):
