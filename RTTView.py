@@ -11,7 +11,7 @@ import configparser
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QFileDialog, QTableWidgetItem
-from PyQt5.QtChart import QChart, QChartView, QLineSeries, QLegend
+from PyQt5.QtChart import QChart, QChartView, QLineSeries
 
 import jlink
 import xlink
@@ -69,6 +69,8 @@ class RTTView(QWidget):
 
         self.rcvbuff = b''
         self.rcvfile = None
+
+        self.elffile = None
         
         self.tmrRTT = QtCore.QTimer()
         self.tmrRTT.setInterval(10)
@@ -76,7 +78,6 @@ class RTTView(QWidget):
         self.tmrRTT.start()
 
         self.tmrRTT_Cnt = 0
-        self.tmrRTT_Sav = 0
     
     def initSetting(self):
         if not os.path.exists('setting.ini'):
@@ -104,6 +105,8 @@ class RTTView(QWidget):
             self.conf.add_section('history')
             self.conf.set('history', 'hist1', '11 22 33 AA BB CC')
 
+        self.Vals = eval(self.conf.get('link', 'variable'))
+
         self.cmbDLL.addItem(self.conf.get('link', 'jlink'))
         self.daplink_detect()    # add DAPLink
 
@@ -120,17 +123,6 @@ class RTTView(QWidget):
         self.N_POINT = int(self.conf.get('display', 'npoint'), 10)
 
         self.txtSend.setPlainText(self.conf.get('history', 'hist1'))
-
-        self.Vals = eval(self.conf.get('link', 'variable'))
-
-        for row, val in self.Vals.items():
-            self.tblVar.setItem(row, 0, QTableWidgetItem(val.name))
-            self.tblVar.setItem(row, 1, QTableWidgetItem(f'{val.addr:08X}'))
-            self.tblVar.setItem(row, 2, QTableWidgetItem(val.typ))
-            self.tblVar.setItem(row, 3, QTableWidgetItem('显示' if val.show else '不显示'))
-            self.tblVar.setItem(row, 4, QTableWidgetItem('删除'))
-
-            self.tblVar.insertRow(self.tblVar.rowCount())
 
     def initQwtPlot(self):
         self.PlotData  = [[0]*self.N_POINT for i in range(self.N_CURVE)]
@@ -315,9 +307,8 @@ class RTTView(QWidget):
                             
                             self.rcvbuff = self.rcvbuff[self.rcvbuff.rfind(b',')+1:]
 
-                            if self.tmrRTT_Cnt - self.tmrRTT_Sav > 3:
-                                self.tmrRTT_Sav = self.tmrRTT_Cnt
-                                if len(d[-1]) != len(self.PlotChart.series()):
+                            if self.tmrRTT_Cnt % 4 == 0:
+                                if len(d[-1]) != len([series for series in self.PlotChart.series() if series.isVisible()]):
                                     for series in self.PlotChart.series():
                                         self.PlotChart.removeSeries(series)
                                     for i in range(min(len(d[-1]), self.N_CURVE)):
@@ -400,6 +391,14 @@ class RTTView(QWidget):
             if self.tmrRTT_Cnt % 100 == 1:
                 self.daplink_detect()
 
+            if self.tmrRTT_Cnt % 100 == 2:
+                path = self.cmbAddr.currentText()
+                if os.path.exists(path) and os.path.isfile(path):
+                    if self.elffile != (path, os.path.getmtime(path)):
+                        self.elffile = (path, os.path.getmtime(path))
+
+                        self.parse_elffile(path)
+
     @pyqtSlot()
     def on_btnSend_clicked(self):
         if self.btnOpen.text() == '关闭连接':
@@ -455,21 +454,65 @@ class RTTView(QWidget):
             self.gLayout2.addWidget(self.tblVar, 0, 0, 4, 2)
             self.tblVar.setVisible(True)
 
-        if os.path.exists(text) and os.path.isfile(text):
-            try:
-                from elftools.elf.elffile import ELFFile
-                elffile = ELFFile(open(text, 'rb'))
+    def parse_elffile(self, path):
+        try:
+            from elftools.elf.elffile import ELFFile
+            elffile = ELFFile(open(path, 'rb'))
 
-                self.Vars = {}
-                for sym in elffile.get_section_by_name('.symtab').iter_symbols():
-                    if sym.entry['st_info']['type'] == 'STT_OBJECT' and sym.entry['st_size'] in (1, 2, 4, 8):
-                        self.Vars[sym.name] = Variable(sym.name, sym.entry['st_value'], sym.entry['st_size'])
+            self.Vars = {}
+            for sym in elffile.get_section_by_name('.symtab').iter_symbols():
+                if sym.entry['st_info']['type'] == 'STT_OBJECT' and sym.entry['st_size'] in (1, 2, 4, 8):
+                    self.Vars[sym.name] = Variable(sym.name, sym.entry['st_value'], sym.entry['st_size'])
 
-                for var in self.Vars.values():
-                    print(f'{var.name:30s} @ {var.addr:08X}, len={var.size}')
+        except Exception as e:
+            print(f'parse elf file fail: {e}')
 
-            except Exception as e:
-                print(f'parse elf file fail: {e}')
+        else:
+            Vals = {row: val for row, val in self.Vals.items() if val.name in self.Vars}
+            self.Vals = {i: val for i, val in enumerate(Vals.values())}
+
+            for row, val in self.Vals.items():
+                var = self.Vars[val.name]
+                if val.addr != var.addr:
+                    val = val._replace(addr = var.addr)
+                if val.size != var.size:
+                    typ, fmt = self.len2type[var.size]
+                    val = val._replace(size = var.size, typ = typ, fmt = fmt)
+
+            self.tblVar_redraw()
+
+    len2type = {
+        1: [('int8',  'b'), ('uint8',  'B')],
+        2: [('int16', 'h'), ('uint16', 'H')],
+        4: [('int32', 'i'), ('uint32', 'I'), ('float',  'f')],
+        8: [('int64', 'q'), ('uint64', 'Q'), ('double', 'd')]
+    }
+
+    def tblVar_redraw(self):
+        while self.tblVar.rowCount():
+            self.tblVar.removeRow(0)
+
+        for series in self.PlotChart.series():
+            self.PlotChart.removeSeries(series)
+
+        self.tblVar.insertRow(0)
+
+        for row, val in self.Vals.items():
+            self.tblVar.insertRow(row)
+            self.tblVar_setRow(row, val)
+
+    def tblVar_setRow(self, row: int, val: Valuable):
+        self.tblVar.setItem(row, 0, QTableWidgetItem(val.name))
+        self.tblVar.setItem(row, 1, QTableWidgetItem(f'{val.addr:08X}'))
+        self.tblVar.setItem(row, 2, QTableWidgetItem(val.typ))
+        self.tblVar.setItem(row, 3, QTableWidgetItem('显示' if val.show else '不显示'))
+        self.tblVar.setItem(row, 4, QTableWidgetItem('删除'))
+
+        self.PlotCurve[row].setName(val.name)
+        self.PlotCurve[row].setVisible(val.show)
+        if self.PlotCurve[row] not in self.PlotChart.series():
+            self.PlotChart.addSeries(self.PlotCurve[row])
+            self.PlotChart.createDefaultAxes()
 
     @pyqtSlot(int, int)
     def on_tblVar_cellDoubleClicked(self, row, column):
@@ -485,46 +528,25 @@ class RTTView(QWidget):
 
                 self.Vals[row] = Valuable(var.name, var.addr, var.size, typ, fmt, True)
 
-                self.tblVar.setItem(row, 0, QTableWidgetItem(var.name))
-                self.tblVar.setItem(row, 1, QTableWidgetItem(f'{var.addr:08X}'))
-                self.tblVar.setItem(row, 2, QTableWidgetItem(typ))
-                self.tblVar.setItem(row, 3, QTableWidgetItem('显示'))
-                self.tblVar.setItem(row, 4, QTableWidgetItem('删除'))
+                self.tblVar_setRow(row, self.Vals[row])
 
-                if row == self.tblVar.rowCount() - 1:   # 最后一行
+                if row == self.tblVar.rowCount() - 1:   # the last row
                     self.tblVar.insertRow(self.tblVar.rowCount())
-                
-                self.PlotCurve[row].setName(var.name)
-                if self.PlotCurve[row] not in self.PlotChart.series():
-                    self.PlotChart.addSeries(self.PlotCurve[row])
-                    self.PlotChart.createDefaultAxes()
         
         elif column == 3:
-            if row != self.tblVar.rowCount() - 1:       # 非最后一行
+            if row != self.tblVar.rowCount() - 1:       # not last row
                 self.Vals[row] = self.Vals[row]._replace(show = not self.Vals[row].show)
 
                 self.tblVar.item(row, 3).setText('显示' if self.Vals[row].show else '不显示')
 
-                self.PlotCurve[row].setPointsVisible(self.Vals[row].show)
+                self.PlotCurve[row].setVisible(self.Vals[row].show)
 
         elif column == 4:
-            if row != self.tblVar.rowCount() - 1:
-                if row == len(self.Vals) - 1:   # 删除最后一行数据
-                    del self.Vals[row]
-                else:
-                    for i in range(row, len(self.Vals)-1):
-                        self.Vals[i] = self.Vals[i+1]
-                    del self.Vals[i+1]
+            if row != self.tblVar.rowCount() - 1:       # not last row
+                self.Vals.pop(row)
+                self.Vals = {i: val for i, val in enumerate(self.Vals.values())}
 
-                self.tblVar.removeRow(row)
-
-                for series in self.PlotChart.series():
-                    self.PlotChart.removeSeries(series)
-                for row in self.Vals.keys():
-                    self.PlotCurve[row].setName(self.Vals[row].name)
-                    if self.Vals[row].show:
-                        self.PlotChart.addSeries(self.PlotCurve[row])
-                self.PlotChart.createDefaultAxes()
+                self.tblVar_redraw()
 
     @pyqtSlot(int)
     def on_chkWave_stateChanged(self, state):
@@ -565,20 +587,13 @@ class VarDialog(QDialog):
         if parent.tblVar.item(row, 0):
             self.cmbVar.setCurrentText(parent.tblVar.item(row, 0).text())
             self.cmbType.setCurrentText(parent.tblVar.item(row, 2).text())
-    
-    len2type = {
-        1: [('int8',  'b'), ('uint8',  'B')],
-        2: [('int16', 'h'), ('uint16', 'H')],
-        4: [('int32', 'i'), ('uint32', 'I'), ('float',  'f')],
-        8: [('int64', 'q'), ('uint64', 'Q'), ('double', 'd')]
-    }
 
     @pyqtSlot(str)
     def on_cmbVar_currentIndexChanged(self, name):
         size = self.parent().Vars[name].size
 
         self.cmbType.clear()
-        for typ, fmt in self.len2type[size]:
+        for typ, fmt in self.parent().len2type[size]:
             self.cmbType.addItem(typ, fmt)
 
 
