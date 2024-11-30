@@ -474,10 +474,10 @@ class RTTView(QWidget):
             for row, val in self.Vals.items():
                 var = self.Vars[val.name]
                 if val.addr != var.addr:
-                    val = val._replace(addr = var.addr)
+                    self.Vals[row] = self.Vals[row]._replace(addr = var.addr)
                 if val.size != var.size:
-                    typ, fmt = self.len2type[var.size]
-                    val = val._replace(size = var.size, typ = typ, fmt = fmt)
+                    typ, fmt = self.len2type[var.size][0]
+                    self.Vals[row] = self.Vals[row]._replace(size = var.size, typ = typ, fmt = fmt)
 
             self.tblVar_redraw()
 
@@ -495,11 +495,12 @@ class RTTView(QWidget):
         for series in self.PlotChart.series():
             self.PlotChart.removeSeries(series)
 
-        self.tblVar.insertRow(0)
-
         for row, val in self.Vals.items():
             self.tblVar.insertRow(row)
             self.tblVar_setRow(row, val)
+
+        if self.tblVar.rowCount() < self.N_CURVE:
+            self.tblVar.insertRow(self.tblVar.rowCount())
 
     def tblVar_setRow(self, row: int, val: Valuable):
         self.tblVar.setItem(row, 0, QTableWidgetItem(val.name))
@@ -519,22 +520,20 @@ class RTTView(QWidget):
         if self.btnOpen.text() == '关闭连接': return
 
         if column < 3:
-            if len(self.Vals) == self.N_CURVE: return
-            
             dlg = VarDialog(self, row)
             if dlg.exec() == QDialog.Accepted:
-                var = self.Vars[dlg.cmbVar.currentText()]
+                var = self.Vars[dlg.cmbName.currentText()]
                 typ, fmt = dlg.cmbType.currentText(), dlg.cmbType.currentData()
 
                 self.Vals[row] = Valuable(var.name, var.addr, var.size, typ, fmt, True)
 
                 self.tblVar_setRow(row, self.Vals[row])
 
-                if row == self.tblVar.rowCount() - 1:   # the last row
+                if self.tblVar.rowCount() < self.N_CURVE and row == self.tblVar.rowCount() - 1:
                     self.tblVar.insertRow(self.tblVar.rowCount())
         
         elif column == 3:
-            if row != self.tblVar.rowCount() - 1:       # not last row
+            if self.tblVar.item(row, 3):
                 self.Vals[row] = self.Vals[row]._replace(show = not self.Vals[row].show)
 
                 self.tblVar.item(row, 3).setText('显示' if self.Vals[row].show else '不显示')
@@ -542,7 +541,7 @@ class RTTView(QWidget):
                 self.PlotCurve[row].setVisible(self.Vals[row].show)
 
         elif column == 4:
-            if row != self.tblVar.rowCount() - 1:       # not last row
+            if self.tblVar.item(row, 4):
                 self.Vals.pop(row)
                 self.Vals = {i: val for i, val in enumerate(self.Vals.values())}
 
@@ -576,20 +575,47 @@ class RTTView(QWidget):
         self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
 
+
+from PyQt5.QtWidgets import QSizePolicy, QDialogButtonBox
+
 class VarDialog(QDialog):
     def __init__(self, parent, row):
         super(VarDialog, self).__init__(parent)
 
-        uic.loadUi('VarDialog.ui', self)
+        self.resize(400, 100)
+        self.setWindowTitle('VarDialog')
+
+        self.cmbType = QtWidgets.QComboBox(self)
+        self.cmbType.setMinimumSize(QtCore.QSize(80, 0))
+
+        self.cmbName = QtWidgets.QComboBox(self)
+        self.cmbName.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.cmbName.currentTextChanged.connect(self.on_cmbName_currentTextChanged)
         
-        self.cmbVar.addItems(parent.Vars.keys())
+        self.hLayout = QtWidgets.QHBoxLayout()
+        self.hLayout.addWidget(QtWidgets.QLabel('变量：', self))
+        self.hLayout.addWidget(self.cmbName)
+        self.hLayout.addWidget(QtWidgets.QLabel('    ', self))
+        self.hLayout.addWidget(QtWidgets.QLabel('类型：', self))
+        self.hLayout.addWidget(self.cmbType)
+
+        self.btnBox = QtWidgets.QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.btnBox.accepted.connect(self.accept)
+        self.btnBox.rejected.connect(self.reject)
+        
+        self.vLayout = QtWidgets.QVBoxLayout(self)
+        self.vLayout.addLayout(self.hLayout)
+        self.vLayout.addItem(QtWidgets.QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+        self.vLayout.addWidget(self.btnBox)
+
+        self.cmbName.addItems(parent.Vars.keys())
 
         if parent.tblVar.item(row, 0):
-            self.cmbVar.setCurrentText(parent.tblVar.item(row, 0).text())
+            self.cmbName.setCurrentText(parent.tblVar.item(row, 0).text())
             self.cmbType.setCurrentText(parent.tblVar.item(row, 2).text())
 
     @pyqtSlot(str)
-    def on_cmbVar_currentIndexChanged(self, name):
+    def on_cmbName_currentTextChanged(self, name):
         size = self.parent().Vars[name].size
 
         self.cmbType.clear()
