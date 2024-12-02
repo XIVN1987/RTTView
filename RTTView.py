@@ -421,7 +421,7 @@ class RTTView(QWidget):
 
     @pyqtSlot()
     def on_btnDLL_clicked(self):
-        dllpath, filter = QFileDialog.getOpenFileName(caption='JLink_x64.dll path', filter='动态链接库文件 (*.dll)', directory=self.cmbDLL.itemText(0))
+        dllpath, filter = QFileDialog.getOpenFileName(caption='JLink_x64.dll path', filter='动态链接库文件 (*.dll *.so)', directory=self.cmbDLL.itemText(0))
         if dllpath != '':
             self.cmbDLL.setItemText(0, dllpath)
 
