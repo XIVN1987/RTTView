@@ -142,9 +142,9 @@ class RTTView(QWidget):
             self.daplinks = aggregator.DebugProbeAggregator.get_all_connected_probes()
             if len(self.daplinks) != self.cmbDLL.count() - 1:
                 for i in range(1, self.cmbDLL.count()):
-                    self.cmbDLL.removeItem(i)
+                    self.cmbDLL.removeItem(1)
                 for i, daplink in enumerate(self.daplinks):
-                    self.cmbDLL.addItem(daplink.product_name)
+                    self.cmbDLL.addItem(f'{daplink.product_name} ({daplink.unique_id})')
         except Exception as e:
             pass
     
@@ -198,7 +198,15 @@ class RTTView(QWidget):
                     self.rtt_cb = False
 
             except Exception as e:
-                self.txtMain.append(f'\n{str(e)}\n')
+                self.txtMain.append(f'\nerror: {str(e)}\n')
+
+                try:
+                    self.xlk.close()
+                except:
+                    try:
+                        daplink.close()
+                    except:
+                        pass
 
             else:
                 self.cmbDLL.setEnabled(False)
