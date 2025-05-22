@@ -43,6 +43,7 @@ class SEGGER_RTT_CB(ctypes.Structure):      # Control Block
 Variable = collections.namedtuple('Variable', 'name addr size')                 # variable from *.elf file
 Valuable = collections.namedtuple('Valuable', 'name addr size typ fmt show')    # variable to read and display
 
+zero_if = lambda i: 0 if i == -1 else i
 
 '''
 from RTTView_UI import Ui_RTTView
@@ -89,11 +90,25 @@ class RTTView(QWidget):
         if not self.conf.has_section('link'):
             self.conf.add_section('link')
             self.conf.set('link', 'mode', 'ARM SWD')
+            self.conf.set('link', 'speed', '4 MHz')
             self.conf.set('link', 'jlink', '')
             self.conf.set('link', 'select', '')
             self.conf.set('link', 'address', '["0x20000000"]')
             self.conf.set('link', 'variable', '{}')
 
+        self.cmbMode.setCurrentIndex(zero_if(self.cmbMode.findText(self.conf.get('link', 'mode'))))
+        self.cmbSpeed.setCurrentIndex(zero_if(self.cmbSpeed.findText(self.conf.get('link', 'speed'))))
+
+        self.cmbDLL.addItem(self.conf.get('link', 'jlink'))
+        self.daplink_detect()    # add DAPLink
+
+        self.cmbDLL.setCurrentIndex(zero_if(self.cmbDLL.findText(self.conf.get('link', 'select'))))
+
+        self.cmbAddr.addItems(eval(self.conf.get('link', 'address')))
+
+        self.Vals = eval(self.conf.get('link', 'variable'))
+
+        if not self.conf.has_section('encode'):
             self.conf.add_section('encode')
             self.conf.set('encode', 'input', 'ASCII')
             self.conf.set('encode', 'output', 'ASCII')
@@ -106,21 +121,9 @@ class RTTView(QWidget):
             self.conf.add_section('history')
             self.conf.set('history', 'hist1', '11 22 33 AA BB CC')
 
-        self.Vals = eval(self.conf.get('link', 'variable'))
-
-        self.cmbDLL.addItem(self.conf.get('link', 'jlink'))
-        self.daplink_detect()    # add DAPLink
-
-        index = self.cmbDLL.findText(self.conf.get('link', 'select'))
-        self.cmbDLL.setCurrentIndex(index if index != -1 else 0)
-
-        self.cmbAddr.addItems(eval(self.conf.get('link', 'address')))
-
-        self.cmbMode.setCurrentIndex(self.cmbMode.findText(self.conf.get('link', 'mode')))
-
-        self.cmbICode.setCurrentIndex(self.cmbICode.findText(self.conf.get('encode', 'input')))
-        self.cmbOCode.setCurrentIndex(self.cmbOCode.findText(self.conf.get('encode', 'output')))
-        self.cmbEnter.setCurrentIndex(self.cmbEnter.findText(self.conf.get('encode', 'oenter')))
+        self.cmbICode.setCurrentIndex(zero_if(self.cmbICode.findText(self.conf.get('encode', 'input'))))
+        self.cmbOCode.setCurrentIndex(zero_if(self.cmbOCode.findText(self.conf.get('encode', 'output'))))
+        self.cmbEnter.setCurrentIndex(zero_if(self.cmbEnter.findText(self.conf.get('encode', 'oenter'))))
 
         self.N_CURVE = int(self.conf.get('display', 'ncurve'), 10)
         self.N_POINT = int(self.conf.get('display', 'npoint'), 10)
@@ -157,9 +160,10 @@ class RTTView(QWidget):
             mode = self.cmbMode.currentText()
             mode = mode.replace(' SWD', '').replace(' cJTAG', '').replace(' JTAG', 'J').lower()
             core = 'Cortex-M0' if mode.startswith('arm') else 'RISC-V'
+            speed= int(self.cmbSpeed.currentText().split()[0]) * 1000 # KHz
             try:
                 if self.cmbDLL.currentIndex() == 0:
-                    self.xlk = xlink.XLink(jlink.JLink(self.cmbDLL.currentText(), mode, core, 4000))
+                    self.xlk = xlink.XLink(jlink.JLink(self.cmbDLL.currentText(), mode, core, speed))
                 
                 else:
                     from pyocd.coresight import dap, ap, cortex_m
@@ -575,6 +579,7 @@ class RTTView(QWidget):
             self.rcvfile.close()
 
         self.conf.set('link',   'mode',   self.cmbMode.currentText())
+        self.conf.set('link',   'speed',  self.cmbSpeed.currentText())
         self.conf.set('link',   'jlink',  self.cmbDLL.itemText(0))
         self.conf.set('link',   'select', self.cmbDLL.currentText())
         self.conf.set('encode', 'input',  self.cmbICode.currentText())

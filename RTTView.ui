@@ -247,7 +247,7 @@
       </widget>
      </item>
      <item row="4" column="2">
-      <widget class="QComboBox" name="cmbTime">
+      <widget class="QComboBox" name="cmbSpeed">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -260,6 +260,56 @@
          <height>0</height>
         </size>
        </property>
+       <item>
+        <property name="text">
+         <string>1 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>2 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>4 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>5 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>8 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>10 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>20 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>40 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>50 MHz</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>80 MHz</string>
+        </property>
+       </item>
       </widget>
      </item>
      <item row="1" column="2">
