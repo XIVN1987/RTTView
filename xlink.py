@@ -10,9 +10,9 @@ class XLink(object):
     def __init__(self, xlk):
         self.xlk = xlk
 
-    def open(self, mcucore):
+    def open(self, mode, core, speed):
         if isinstance(self.xlk, jlink.JLink):
-            self.xlk.open(mcucore)
+            self.xlk.open(mode, core, speed)
         else:
             self.xlk.ap.dp.link.open()
 
@@ -44,7 +44,7 @@ class XLink(object):
         if isinstance(self.xlk, jlink.JLink):
             return self.xlk.read_mem_U8(addr, count)
         else:
-            return self.xlk.read_memory_block8(addr, count)
+            return [self.xlk.read8(addr+i) for i in range(count)]
 
     def read_mem_U16(self, addr, count):
         if isinstance(self.xlk, jlink.JLink):
@@ -69,6 +69,12 @@ class XLink(object):
             return self.xlk.read_regs(rlist)
         else:
             return dict(zip(rlist, self.xlk.read_core_registers_raw(rlist)))
+
+    def read_reg(self, reg):
+        if isinstance(self.xlk, jlink.JLink):
+            return self.xlk.read_reg(reg)
+        else:
+            return self.xlk.read_core_register_raw(reg)
 
     def write_reg(self, reg, val):
         if isinstance(self.xlk, jlink.JLink):
@@ -111,5 +117,7 @@ class XLink(object):
             return self.xlk.read_core_type()
         else:
             self.xlk._read_core_type()
+            if self.xlk.core_type == 0x132:
+                return 'STAR-MC1'
             from pyocd.coresight import cortex_m
             return cortex_m.CORE_TYPE_NAME[self.xlk.core_type]

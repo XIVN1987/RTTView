@@ -88,6 +88,7 @@ class RTTView(QWidget):
         
         if not self.conf.has_section('link'):
             self.conf.add_section('link')
+            self.conf.set('link', 'mode', 'ARM SWD')
             self.conf.set('link', 'jlink', '')
             self.conf.set('link', 'select', '')
             self.conf.set('link', 'address', '["0x20000000"]')
@@ -114,6 +115,8 @@ class RTTView(QWidget):
         self.cmbDLL.setCurrentIndex(index if index != -1 else 0)
 
         self.cmbAddr.addItems(eval(self.conf.get('link', 'address')))
+
+        self.cmbMode.setCurrentIndex(self.cmbMode.findText(self.conf.get('link', 'mode')))
 
         self.cmbICode.setCurrentIndex(self.cmbICode.findText(self.conf.get('encode', 'input')))
         self.cmbOCode.setCurrentIndex(self.cmbOCode.findText(self.conf.get('encode', 'output')))
@@ -151,9 +154,12 @@ class RTTView(QWidget):
     @pyqtSlot()
     def on_btnOpen_clicked(self):
         if self.btnOpen.text() == '打开连接':
+            mode = self.cmbMode.currentText()
+            mode = mode.replace(' SWD', '').replace(' cJTAG', '').replace(' JTAG', 'J').lower()
+            core = 'Cortex-M0' if mode.startswith('arm') else 'RISC-V'
             try:
                 if self.cmbDLL.currentIndex() == 0:
-                    self.xlk = xlink.XLink(jlink.JLink(self.cmbDLL.currentText(), 'Cortex-M0'))
+                    self.xlk = xlink.XLink(jlink.JLink(self.cmbDLL.currentText(), mode, core, 4000))
                 
                 else:
                     from pyocd.coresight import dap, ap, cortex_m
@@ -459,7 +465,7 @@ class RTTView(QWidget):
             self.cmbOCode.setEnabled(False)
             self.cmbEnter.setEnabled(False)
 
-            self.gLayout2.addWidget(self.tblVar, 0, 0, 4, 2)
+            self.gLayout2.addWidget(self.tblVar, 0, 0, 5, 2)
             self.tblVar.setVisible(True)
 
     def parse_elffile(self, path):
@@ -568,6 +574,7 @@ class RTTView(QWidget):
         if self.rcvfile and not self.rcvfile.closed:
             self.rcvfile.close()
 
+        self.conf.set('link',   'mode',   self.cmbMode.currentText())
         self.conf.set('link',   'jlink',  self.cmbDLL.itemText(0))
         self.conf.set('link',   'select', self.cmbDLL.currentText())
         self.conf.set('encode', 'input',  self.cmbICode.currentText())

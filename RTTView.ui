@@ -195,7 +195,7 @@
    </item>
    <item>
     <layout class="QGridLayout" name="gLayout2">
-     <item row="0" column="1" rowspan="4">
+     <item row="0" column="1" rowspan="5">
       <widget class="QPushButton" name="btnSend">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
@@ -246,7 +246,7 @@
        </item>
       </widget>
      </item>
-     <item row="3" column="2">
+     <item row="4" column="2">
       <widget class="QComboBox" name="cmbTime">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -304,7 +304,7 @@
        </item>
       </widget>
      </item>
-     <item row="0" column="0" rowspan="4">
+     <item row="0" column="0" rowspan="5">
       <widget class="QTextEdit" name="txtSend">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -352,6 +352,42 @@
        <item>
         <property name="text">
          <string>UTF-8</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QComboBox" name="cmbMode">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>80</width>
+         <height>0</height>
+        </size>
+       </property>
+       <item>
+        <property name="text">
+         <string>ARM SWD</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ARM JTAG</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>RV JTAG</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>RV cJTAG</string>
         </property>
        </item>
       </widget>
