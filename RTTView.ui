@@ -382,12 +382,12 @@
        </item>
        <item>
         <property name="text">
-         <string>RV JTAG</string>
+         <string>RV cJTAG</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>RV cJTAG</string>
+         <string>RV JTAG</string>
         </property>
        </item>
       </widget>
