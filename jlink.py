@@ -131,7 +131,11 @@ class JLink(object):
         return self.read_mem_U32(addr, 1)[0]
 
     def read_reg(self, reg):
-        return self.jlk.JLINKARM_ReadReg(self.core_regs[reg.upper()])
+        val = self.jlk.JLINKARM_ReadReg(self.core_regs[reg.upper()])
+        if val < 0:
+            val += 1 << 32
+
+        return val
     
     def read_regs(self, rlist):
         regIndex = [self.core_regs[reg.upper()] for reg in rlist]
