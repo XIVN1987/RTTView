@@ -173,6 +173,7 @@ class RTTView(QWidget):
                     _dp = dap.DebugPort(daplink, None)
                     _dp.init()
                     _dp.power_up_debug()
+                    _dp.set_clock(speed * 1000)
 
                     _ap = ap.AHB_AP(_dp, 0)
                     _ap.init()
@@ -184,7 +185,7 @@ class RTTView(QWidget):
 
                 if re.match(r'0[xX][0-9a-fA-F]{8}', self.cmbAddr.currentText()):
                     addr = int(self.cmbAddr.currentText(), 16)
-                    for i in range(256):
+                    for i in range(64):
                         data = self.xlk.read_mem_U8(addr + 1024 * i, 1024 + 32) # 多读32字节，防止搜索内容在边界处
                         index = bytes(data).find(b'SEGGER RTT')
                         if index != -1:
