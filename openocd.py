@@ -1,40 +1,48 @@
 '''
-OpenOCD telnet-protocol python wrapper.
+OpenOCD Tcl RPC python wrapper.
 '''
 import re
 import time
-import struct
-import telnetlib
+import socket
 
 
 class OpenOCD:
-    def __init__(self, host="localhost", port=4444, mode='rv', core='risc-v', speed=4000):
+    def __init__(self, host="localhost", port=6666, mode='rv', core='risc-v', speed=4000):
         self.host = host
         self.port = port
 
-        self.tnet = telnetlib.Telnet()
+        self.debug = False
         
         self.open(mode, core, speed)
 
     def open(self, mode='rv', core='risc-v', speed=4000):
         self.mode = mode.lower()
 
-        self.tnet.open(self.host, self.port, 1)
-        self._read()
+        self.sock = socket.create_connection((self.host, self.port), timeout=1)
 
         self.get_registers()
-
-    def _read(self):
-        try:
-            s = self.tnet.read_until(b'> ', 2).decode('latin-1')
-        except:
-            return ''
-        
-        return s[s.find('\n')+1:s.rfind('\n')]
     
     def _exec(self, cmd):
-        self.tnet.write(f'{cmd}\n'.encode('latin-1'))
+        if self.debug:
+            print('<- ', cmd)
+
+        self.sock.send(f'{cmd}\x1a'.encode('latin-1'))
         return self._read()
+
+    def _read(self):
+        resp = bytes()
+        start = time.time()
+        while time.time() < start + 2:
+            resp += self.sock.recv(4096)
+            if resp.endswith(b'\x1a'):
+                break
+
+        resp = resp[:-1].decode('latin-1').strip()
+
+        if self.debug:
+            print('-> ', resp)
+
+        return resp
 
     def get_registers(self):
         self.core_regs = {}  # 'name: index' pair
@@ -153,14 +161,17 @@ class OpenOCD:
             self._exec(f'resume {addr:#x}') # resume the target to specified address
 
     def halted(self):
-        res = self._exec('poll')
-
+        res = self._exec('targets')
+        
         return 'halted' in res
 
     def close(self):
-        self.tnet.close()
+        try:
+            self._exec('exit')
+        finally:
+            self.sock.close()
 
-        time.sleep(0.2)
+        time.sleep(0.01)
 
 
 

@@ -100,7 +100,7 @@ class RTTView(QWidget):
         self.cmbSpeed.setCurrentIndex(zero_if(self.cmbSpeed.findText(self.conf.get('link', 'speed'))))
 
         self.cmbDLL.addItem(self.conf.get('link', 'jlink'), 'jlink')
-        self.cmbDLL.addItem('OpenOCD', 'openocd')
+        self.cmbDLL.addItem('OpenOCD Tcl RPC (6666)', 'openocd')
         self.daplink_detect()    # add DAPLink
 
         self.cmbDLL.setCurrentIndex(zero_if(self.cmbDLL.findText(self.conf.get('link', 'select'))))
