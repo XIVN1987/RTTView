@@ -100,7 +100,7 @@ class OpenOCD:
         data = []
         index = 0
         while index < count:    # read too much one-time will cause timeout
-            res = self._exec(f'read_memory {addr:#x} {width} {min(128, count)}')
+            res = self._exec(f'read_memory {addr:#x} {width} {min(128, count - index)}')
             if res:
                 data.extend([int(x, 16) for x in res.split()])
 
