@@ -18,7 +18,7 @@ class OpenOCD:
     def open(self, mode='rv', core='risc-v', speed=4000):
         self.mode = mode.lower()
 
-        self.sock = socket.create_connection((self.host, self.port), timeout=1)
+        self.sock = socket.create_connection((self.host, self.port), timeout=2)
 
         self.get_registers()
     
