@@ -141,9 +141,11 @@ class OpenOCD:
     def write_reg(self, reg, val):
         self._exec(f'reg {self.core_regs[reg]} {val:#x}')
 
-    # halt: immediately halt after reset
-    def reset(self, halt=False):
-        self._exec(f'reset {"halt" if halt else "run"}')
+    def reset(self):
+        self._exec('reset run')
+
+    def reset_and_halt(self):
+        self._exec('reset halt')
 
     def halt(self):
         self._exec('halt 500')
@@ -168,6 +170,8 @@ class OpenOCD:
     def close(self):
         try:
             self._exec('exit')
+        except Exception as e:
+            pass
         finally:
             self.sock.close()
 
